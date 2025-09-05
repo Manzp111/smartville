@@ -6,6 +6,8 @@ __pycache__/
 */migrations/*.pyc
 */migrations/*.py[cod]
 */migrations/__pycache__/
+*/migrations/[!__]*.py
+
 
 # Database file
 db.sqlite3
@@ -13,4 +15,5 @@ db.sqlite3
 # Environment variables / virtual environment
 .env
 .venv/
+.idea/
 

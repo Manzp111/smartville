@@ -1,0 +1,114 @@
+﻿@startuml
+' =========================
+' Smart Village Professional ERD
+' =========================
+
+!define TABLE(name,desc,color) class name as "desc" << (T, color) >>
+
+' --- Tables ---
+
+TABLE(Person, "Person", #FFDDCC) {
+    + person_id : UUID <<PK>>
+    first_name : varchar
+    last_name : varchar
+    date_of_birth : date
+    gender : enum
+    location : varchar
+    national_id : varchar
+    person_type : enum
+    phone_number : varchar
+    registration_date : datetime
+}
+
+TABLE(User, "User", #CCFFCC) {
+    + user_id : UUID <<PK>>
+    person_id : UUID <<FK>>
+    username : varchar
+    email : varchar
+    password_hash : varchar
+    user_role : enum
+    status : enum
+}
+
+TABLE(Resident, "Resident", #CCCCFF) {
+    + resident_id : UUID <<PK>>
+    person_id : UUID <<FK>>
+}
+
+TABLE(Visitor, "Visitor", #FFCCFF) {
+    + visitor_id : UUID <<PK>>
+    person_id : UUID <<FK>>
+    host_id : UUID <<FK>>
+    arrival_date : date
+    departure_date : date
+    reason_for_visit : text
+    where_from : varchar
+}
+
+TABLE(Event, "Event", #FFFFCC) {
+    + event_id : UUID <<PK>>
+    title : varchar
+    description : text
+    location : varchar
+    date : date
+    start_time : time
+    end_time : time
+    organizer_id : UUID <<FK>>
+    status : enum
+    created_at : datetime
+    updated_at : datetime
+    image : varchar
+}
+
+TABLE(EventAttendee, "Event Attendee", #CCE5FF) {
+    + id : bigint <<PK>>
+    event_id : UUID <<FK>>
+    person_id : UUID <<FK>>
+    status : enum
+    registration_date : datetime
+    notes : text
+}
+
+TABLE(Complaint, "Complaint", #FFCCCC) {
+    + complaint_id : UUID <<PK>>
+    complainant_id : UUID <<FK>>
+    description : text
+    is_anonymous : boolean
+    location : varchar
+    date_submitted : datetime
+    status : enum
+}
+
+TABLE(CommunityAlert, "Community Alert", #CCFFFF) {
+    + alert_id : UUID <<PK>>
+    reporter_id : UUID <<FK>>
+    title : varchar
+    description : text
+    alert_type : enum
+    urgency_level : enum
+    status : enum
+    location : varchar
+    specific_location : varchar
+    incident_date : date
+    incident_time : time
+    allow_sharing : boolean
+    contact_phone : varchar
+    is_anonymous : boolean
+    created_at : datetime
+}
+
+' --- Relationships ---
+
+Person ||--o{ User : "person_id"
+Person ||--o{ Resident : "person_id"
+Person ||--o{ Visitor : "person_id"
+
+Resident ||--o{ Visitor : "host_id"
+Person ||--o{ Event : "organizer_id"
+Person ||--o{ Complaint : "complainant_id"
+Person ||--o{ CommunityAlert : "reporter_id"
+
+Event ||--o{ EventAttendee : "event_id"
+Person ||--o{ EventAttendee : "person_id"
+
+@enduml

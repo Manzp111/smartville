@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <h2>Find Village by Coordinates</h2>
+
+<form method="get" action="">
+  <label>Latitude:</label>
+  <input type="text" name="lat" required>
+  <br><br>
+  <label>Longitude:</label>
+  <input type="text" name="lon" required>
+  <br><br>
+  <button type="submit">Search</button>
+</form>
+
+{% if location.village %}
+  <h3>Location Information</h3>
+  <p><strong>Village:</strong> {{ location.village }}</p>
+  <p><strong>Sector:</strong> {{ location.sector }}</p>
+  <p><strong>District:</strong> {{ location.district }}</p>
+{% elif request.GET.lat and request.GET.lon %}
+  <p style="color:red;">No matching village found for the given coordinates.</p>
+{% endif %}
+
+    
+</body>
+</html>

@@ -1,0 +1,69 @@
+﻿@startuml
+title Smart Village - Advanced Backend Sequence Diagram (Registration & Visitor Flow)
+
+actor User
+actor Resident
+actor Leader
+
+participant "API Gateway" as Gateway
+participant "Auth Controller" as AuthCtrl
+participant "Auth Service" as AuthSrv
+participant "User Repository" as UserRepo
+database "UserDB" as DB_User
+
+participant "Resident Controller" as ResCtrl
+participant "Resident Service" as ResSrv
+participant "GIS Service" as GIS
+participant "Village Repository" as VillageRepo
+database "VillageDB" as DB_Village
+database "ResidentDB" as DB_Resident
+
+participant "Visitor Controller" as VisCtrl
+participant "Visitor Service" as VisSrv
+database "VisitorDB" as DB_Visitor
+
+participant "Notification Service" as Notify
+
+== Register as System User ==
+User -> Gateway : POST /register-user
+Gateway -> AuthCtrl : Forward user data
+AuthCtrl -> AuthSrv : Validate input (email, password)
+AuthSrv -> UserRepo : saveUser()
+UserRepo -> DB_User : INSERT new system user
+DB_User --> UserRepo : Success
+UserRepo --> AuthSrv : User Created
+AuthSrv --> AuthCtrl : Success
+AuthCtrl --> Gateway : User Registered
+Gateway --> User : Registration Success (system account created)
+
+== Register as Village Resident ==
+User -> Gateway : POST /register-resident (lat, long, personal info)
+Gateway -> ResCtrl : Forward resident data
+ResCtrl -> GIS : Validate coordinates inside village boundary
+GIS -> VillageRepo : getVillageByCoordinates(lat, long)
+VillageRepo -> DB_Village : Query spatial data
+DB_Village --> VillageRepo : Village found
+VillageRepo --> GIS : Return Village ID
+GIS --> ResCtrl : Valid Village
+ResCtrl -> ResSrv : Create Resident
+ResSrv -> ResidentDB : INSERT Resident linked to Village
+ResidentDB --> ResSrv : Success
+ResSrv --> ResCtrl : Resident Created
+ResCtrl --> Gateway : Registration Success
+Gateway --> User : Resident Registered + Village assigned
+
+== Register Visitor ==
+Resident -> Gateway : POST /register-visitor (visitor info, host_id, where_from)
+Gateway -> VisCtrl : Forward visitor data
+VisCtrl -> VisSrv : Validate & Link to Resident
+VisSrv -> DB_Visitor : INSERT visitor record (host_id, origin, duration)
+DB_Visitor --> VisSrv : Success
+VisSrv --> VisCtrl : Visitor Registered
+VisCtrl --> Gateway : Success
+Gateway --> Resident : Visitor Registered
+
+== Notify Leader ==
+VisSrv -> Notify : Send Notification
+Notify -> Leader : "New Visitor registered under Resident (host_id), from [where_from]"
+
+@enduml
