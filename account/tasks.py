@@ -3,14 +3,20 @@ from celery import shared_task
 from django.core.mail import send_mail
 from .models import OTP
 
-@shared_task
-def send_verification_email_task(email, otp_code):
+from django.conf import settings
+
+@shared_task(bind=True, max_retries=3)
+def send_verification_email_task(self, first_name, last_name, email, otp_code):
     subject = "Verify your email"
-    message = f"Hello {email},\n\nUse the following OTP to verify your email: {otp_code}\n\nThis OTP expires in 30 minutes."
-    from_email = "no-reply@example.com"
+    message = f"Hello {last_name}-{first_name},\n\nUse the following OTP to verify your email: {otp_code}\n\nThis OTP expires in 30 minutes."
+    from_email = settings.DEFAULT_FROM_EMAIL
     recipient_list = [email]
     
-    send_mail(subject, message, from_email, recipient_list)
+    try:
+        send_mail(subject, message, from_email, recipient_list)
+    except Exception as e:
+        raise self.retry(exc=e, countdown=60)
+
 
 
 @shared_task

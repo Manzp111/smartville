@@ -26,10 +26,13 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'django_celery_beat',
     'corsheaders',
+    'django_filters',
     
     # Local apps
     'account',
     'Location',
+    'Resident',
+    'vistor',
 ]
 
 MIDDLEWARE = [
@@ -64,18 +67,11 @@ WSGI_APPLICATION = 'SmartVillage.wsgi.application'
 
 # DATABASE (Supabase PostgreSQL)
 # Use DIRECT_URL only for migrations, otherwise DATABASE_URL
-active_db_url = (
-    config("DIRECT_URL")
-    if "migrate" in sys.argv
-    else config("DATABASE_URL")
-)
-
 DATABASES = {
-    'default': dj_database_url.config(
-        default=active_db_url,
-        conn_max_age=600,   # keep connections alive
-        ssl_require=True    # Supabase requires SSL
-    )
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
 }
 
 # PASSWORD VALIDATION
@@ -116,6 +112,7 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.BasicAuthentication',
         'rest_framework.authentication.TokenAuthentication',
     ),
+    "EXCEPTION_HANDLER": "account.utils.custom_exception_handler"
 }
 
 SPECTACULAR_SETTINGS = {
