@@ -1,0 +1,110 @@
+﻿@startuml
+title Smart Village Use Case Diagram
+
+skinparam actorStyle awesome
+skinparam dpi 150
+skinparam usecase {
+  BackgroundColor #EEF9FF
+  BorderColor #336699
+  ArrowColor #336699
+  FontSize 14
+}
+skinparam actor {
+  FontSize 16
+}
+skinparam packageStyle rectangle
+
+' =========================
+' Actors
+' =========================
+actor Resident as A1
+actor Visitor as A2
+actor Leader as A3
+actor Admin as A4
+actor System as A5
+
+' =========================
+' Use Case Groups
+' =========================
+package "Authentication" {
+  usecase "Register System User" as UC_RegisterUser
+  usecase "Login" as UC_Login
+  usecase "Send OTP Verification" as UC_SendOTP
+  usecase "Verify Email" as UC_VerifyEmail
+}
+
+package "Resident & Visitor Management" {
+  usecase "Register as Resident via GPS" as UC_RegisterResident
+  usecase "Add Visitor" as UC_AddVisitor
+  usecase "View Own Data" as UC_ViewOwnData
+  usecase "View Village Data" as UC_ViewVillageData
+}
+
+package "Events & Conferences" {
+  usecase "Create Event" as UC_CreateEvent
+  usecase "Attend Event" as UC_AttendEvent
+  usecase "Create Conference" as UC_CreateConference
+  usecase "Attend Conference" as UC_AttendConference
+  usecase "Approve Event/Conference" as UC_ApproveEvent
+}
+
+package "Services & Community" {
+  usecase "Request Service" as UC_RequestService
+  usecase "Submit Complaint" as UC_SubmitComplaint
+  usecase "Report Community Alert" as UC_ReportAlert
+}
+
+package "Leader Actions" {
+  usecase "Approve Resident Registration" as UC_ApproveResident
+  usecase "View Complaints" as UC_ViewComplaints
+  usecase "View Alerts" as UC_ViewAlerts
+}
+
+package "Admin Actions" {
+  usecase "Manage Users" as UC_ManageUsers
+}
+
+' =========================
+' Relationships
+' =========================
+
+' --- Resident ---
+A1 --> UC_RegisterUser
+A1 --> UC_Login
+A1 --> UC_RegisterResident
+A1 --> UC_AddVisitor
+A1 --> UC_ViewOwnData
+A1 --> UC_ViewVillageData
+A1 --> UC_RequestService
+A1 --> UC_AttendEvent
+A1 --> UC_AttendConference
+A1 --> UC_SubmitComplaint
+A1 --> UC_ReportAlert
+A1 --> UC_SendOTP
+A1 --> UC_VerifyEmail
+A1 --> UC_CreateEvent
+A1 --> UC_CreateConference
+
+' --- Visitor ---
+A2 --> UC_ViewOwnData
+A2 --> UC_AttendEvent
+A2 --> UC_AttendConference
+
+' --- Leader ---
+A3 --> UC_Login
+A3 --> UC_ApproveResident
+A3 --> UC_ApproveEvent
+A3 --> UC_ViewComplaints
+A3 --> UC_ViewAlerts
+
+' --- Admin ---
+A4 --> UC_Login
+A4 --> UC_ManageUsers
+A4 --> UC_ViewComplaints
+A4 --> UC_ViewAlerts
+A4 --> UC_ApproveEvent
+
+' --- System ---
+A5 --> UC_RegisterResident : "Detect location & notify leader"
+
+@enduml

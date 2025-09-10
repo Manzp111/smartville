@@ -1,0 +1,58 @@
+﻿@startuml
+!define RECTANGLE class
+
+skinparam activity {
+  BackgroundColor #F2F2F2
+  BorderColor #333333
+  ArrowColor #004080
+}
+
+title Smart Village System Workflow
+
+start
+
+:Resident Registers Account;
+:Verify Email;
+:Login;
+
+partition "Service Requests" {
+    :Submit Service Request;
+    if (Request Approved?) then (Yes)
+        :Receive Approval Notification;
+    else (No)
+        :Receive Rejection Notification;
+    endif
+}
+
+partition "Events" {
+    :View Events;
+    :Attend Event;
+}
+
+partition "Complaints" {
+    :Submit Complaint;
+}
+
+partition "Community Alerts" {
+    :Report Alert;
+}
+
+partition "Leader Actions" {
+    :Login;
+    :Review Service Requests;
+    :Approve/Reject Requests;
+    :Review Complaints;
+    :Review Community Alerts;
+    :Create Event;
+}
+
+partition "Admin Actions" {
+    :Login;
+    :Manage Users;
+    :View Complaints;
+    :View Community Alerts;
+    :Create Event;
+}
+
+stop
+@enduml

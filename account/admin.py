@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import User, Person, Location
+from .models import User, Person, Location,OTP
 
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
@@ -18,3 +18,9 @@ class LocationAdmin(admin.ModelAdmin):
     list_display = ('province', 'district', 'sector', 'village')
     search_fields = ('village', 'district')
     ordering = ('village',)
+@admin.register(OTP)
+class OTPAdmin(admin.ModelAdmin):
+    list_display = ('user', 'code', 'purpose', 'created_at', 'is_used')
+    search_fields = ('user__email', 'code', 'purpose')
+    list_filter = ('purpose', 'is_used', 'created_at')
+    ordering = ('-created_at',)

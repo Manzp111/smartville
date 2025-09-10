@@ -1,0 +1,57 @@
+﻿@startuml
+title Smart Village Level 1 DFD
+
+' --- External Actors ---
+actor Resident
+actor Visitor
+actor Leader
+actor Admin
+
+' --- Data Stores ---
+database PersonDB as DB1
+database UserDB as DB2
+database RequestDB as DB3
+database EventDB as DB4
+database ComplaintDB as DB5
+database AlertDB as DB6
+
+' --- Main Processes ---
+rectangle "1. Registration & Login" as P1
+rectangle "2. Service Requests" as P2
+rectangle "3. Event Management" as P3
+rectangle "4. Complaint Handling" as P4
+rectangle "5. Community Alerts" as P5
+
+' --- Data Flows ---
+
+' Registration & Login
+Resident --> P1 : Provide personal info
+P1 --> DB1 : Store Person info
+P1 --> DB2 : Store User account
+P1 --> Resident : OTP & Verification
+
+' Service Requests
+Resident --> P2 : Submit Request
+P2 --> DB3 : Store Request
+Leader --> P2 : Approve/Reject
+P2 --> Resident : Notify status
+
+' Event Management
+Leader --> P3 : Create Event
+Resident --> P3 : Register for Event
+P3 --> DB4 : Store Event info
+P3 --> Resident : Notify registration
+
+' Complaint Handling
+Resident --> P4 : Submit Complaint
+P4 --> DB5 : Store Complaint
+Leader --> P4 : Review & Update
+P4 --> Resident : Notify status
+
+' Community Alerts
+Resident --> P5 : Report Alert
+P5 --> DB6 : Store Alert
+Leader/Admin --> P5 : View/Manage
+P5 --> Resident : Notify alert status
+
+@enduml
