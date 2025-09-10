@@ -2,38 +2,46 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Font Awesome 6 (latest) -->
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <title>Home - API Docs</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 1rem;
+            text-align: center;
+        }
+        main {
+            margin: 20px;
+        }
+        .link {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 10px 15px;
+            background-color: #2c3e;
+            color:black;
+            text-decoration: none;
+            border-radius: 5px;
+            width:100vw;
+            text-align: center;
+        }
+        
 
-    <title>Document</title>
+    </style>
 </head>
 <body>
-  <div class="flex justify-between items-center ml-[50px] mr-[50px] mt-[10px] bg-gray-100 h-[15px] mt-[20px] bg-white p-">
-    <div class="flex items-center space-x-2">
-        <h1 class="text-green-500 text-3xl">SmartVillage</h1>
-    </div>
-    <div class="flex items-center space-x-4">
-        <div class="">
-        <ul class="flex space-x-4">
-            <li><a href="">Home</a></li>
-            <li><a href="">Feature</a></li>
-            <li><a href="">about</a></li>
-            <li><a href="">contact</a></li>
-        </ul>
-        </div>
-        <div class="flex items-center space-x-1 cursor-pointer">
-            <i class="fa-solid fa-globe"></i>
-            <p>English</p>
-            <i class="fa-regular fa-caret-down"></i>
-        </div>
+    <header>
+        <h1>Welcome Smart Village</h1>
+        <p>API Documentation</p>
+    </header>
 
-    </div>
-    <div class="flex items-center space-x-2 cursor-pointer ">
-        <h5 class="bg-green-600 text-white rounded p-[5px]">Visit Community</h5>
-    </div>
-  </div>
-    
+    <main>
+        <h2>Swagger UI</h2>
+        <a href="{% url 'swagger-ui' %}" class="link">Api swager documentation</a>
+    </main>
 </body>
 </html>
