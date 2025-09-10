@@ -1,41 +1,40 @@
 from rest_framework import serializers
-from .models import User, Person, Location, OTP
+from .models import User, Person,  OTP
 import uuid
 from .utils import generate_otp
 from rest_framework.validators import UniqueValidator
-
-class LocationSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Location
-        fields = ["province", "district", "sector", "cell", "village"]
+from .tasks import send_verification_email_task
+from django.utils import timezone
+from datetime import timedelta
 
 
 class PersonSerializer(serializers.ModelSerializer):
-    location = LocationSerializer()
-
     class Meta:
         model = Person
-        fields = ["national_id", "location"] 
+        fields = ["first_name", "last_name"]
 
-    def validate_national_id(self, value):
-        if not str(value).isdigit() or len(str(value)) != 16:
-            raise serializers.ValidationError("National ID must be exactly 16 digits.")
-        return value
+
+from rest_framework import serializers
+from .models import User, Person
+from rest_framework.validators import UniqueValidator
+from django.db import transaction
 
 class RegisterSerializer(serializers.ModelSerializer):
     person = PersonSerializer()
     password = serializers.CharField(write_only=True, min_length=8)
     confirm_password = serializers.CharField(write_only=True)
     email = serializers.EmailField(
-        validators=[UniqueValidator(queryset=User.objects.all(), message="Email exist.")]
+        validators=[UniqueValidator(queryset=User.objects.all(), message="Email already exists.")]
     )
 
     class Meta:
         model = User
         fields = ["email", "password", "confirm_password", "person"]
+
+    # Password validation
     def validate_password(self, value):
         if len(value) < 8:
-            raise serializers.ValidationError("Password must be at least 8 characters long.")
+            raise serializers.ValidationError("Password must be at least 8 characters.")
         if not any(char.isdigit() for char in value):
             raise serializers.ValidationError("Password must contain at least one digit.")
         if not any(char.isalpha() for char in value):
@@ -46,50 +45,46 @@ class RegisterSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Password must not contain spaces.")
         if value.islower() or value.isupper():
             raise serializers.ValidationError("Password must contain both uppercase and lowercase letters.")
-        if value in ['password', '12345678', 'qwertyui', 'letmein', 'welcome']:
-            raise serializers.ValidationError("Password is too common.")
-        # Check if password is same as email
         email = self.initial_data.get("email", "")
         if value == email:
             raise serializers.ValidationError("Password must not be the same as email.")
-        
-
         return value
 
+    # Confirm password match
     def validate(self, data):
         if data["password"] != data["confirm_password"]:
             raise serializers.ValidationError("Passwords do not match.")
         return data
 
-    def validate_email(self, value):
-        if User.objects.filter(email=value).exists():
-            raise serializers.ValidationError("Email exist.")
-        return value
-    
-
     def create(self, validated_data):
-        # Extract person and location data
-        validated_data.pop("confirm_password")
         person_data = validated_data.pop("person")
-        location_data = person_data.pop("location")
+        validated_data.pop("confirm_password")
 
-        # Ensure location exists or create
-        location, _ = Location.objects.get_or_create(**location_data)
+        with transaction.atomic():
+            # Create Person
+            person = Person.objects.create(**person_data)
 
-        # Create person
-        person = Person.objects.create(location=location, **person_data)
+            # Create User
+            user = User.objects.create(
+                email=validated_data["email"],
+                person=person,
+                is_active=True,
+                is_verified=False
+            )
+            user.set_password(validated_data["password"])
+            user.save()
 
-        # Create user
-        user = User.objects.create(
-            email=validated_data["email"],
-            person=person,
-            is_active=True,
-            is_verified=False
-        )
-        user.set_password(validated_data["password"])
-        user.save()
+            # Generate OTP
+            otp = generate_otp(user, purpose="verification")
 
-        
+            # Send verification email in background (Celery task)
+            send_verification_email_task.delay(
+                user.person.first_name,
+                user.person.last_name,
+                user.email,
+                otp.code
+            )
+
         return user
     
 
@@ -137,6 +132,54 @@ class OTPVerifySerializer(serializers.Serializer):
         otp.save()
 
         return user
+
+
+
+class ResendOTPSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def validate_email(self, value):
+        try:
+            user = User.objects.get(email=value)
+        except User.DoesNotExist:
+            raise serializers.ValidationError("No user found with this email.")
+        
+        if user.is_verified:
+            raise serializers.ValidationError("User is already verified.")
+        
+        self.user = user
+        return value
+
+    def save(self, **kwargs):
+        user = self.user
+
+        # Get latest OTP for verification purpose
+        last_otp = OTP.objects.filter(user=user, purpose="verification", is_used=False).order_by("-created_at").first()
+
+        # Cooldown: 1 minute before sending another
+        if last_otp:
+            from pytz import timezone as pytz_timezone
+            now = timezone.now().astimezone(pytz_timezone('Africa/Kigali'))
+            if (now - last_otp.created_at).total_seconds() < 120:
+                raise serializers.ValidationError("Please wait for minutues before requesting another OTP.")
+
+            # Mark old OTP as used
+            last_otp.is_used = True
+            last_otp.save()
+
+        # Generate new OTP
+        otp = generate_otp(user, purpose="verification")
+
+        # Send verification email asynchronously
+        send_verification_email_task.delay(
+            user.person.first_name,
+            user.person.last_name,
+            user.email,
+            otp.code
+        )
+
+        return {"message": "A new OTP has been sent to your email."}
+
 
 
 

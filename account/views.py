@@ -2,10 +2,10 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import AllowAny
-from .serializers import RegisterSerializer, OTPVerifySerializer
+from .serializers import RegisterSerializer, OTPVerifySerializer,ResendOTPSerializer
 from .utils import generate_otp
-from .tasks import send_verification_email_task
 from drf_spectacular.utils import extend_schema, OpenApiExample
+from django.db import transaction
 
 
 
@@ -32,6 +32,7 @@ from drf_spectacular.utils import extend_schema, OpenApiExample
     description="Create a new user account. Returns a message to verify email using OTP.",
     summary="Register to be a user of system",
 )
+
 class RegisterView(APIView):
     permission_classes = [AllowAny]
     authentication_classes = []
@@ -39,16 +40,16 @@ class RegisterView(APIView):
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
-            user = serializer.save()
-            # OTP already generated in create()
-            otp = generate_otp(user, purpose="verification")
-
-            send_verification_email_task.delay(user.email, otp.code)
+            user = serializer.save()  # everything (User + Person + OTP + Email) happens inside serializer
             return Response({
                 "message": "Account created. Verify your email using the OTP.",
                 "email": user.email
             }, status=status.HTTP_201_CREATED)
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+                   
 
 
 
@@ -81,3 +82,34 @@ class OTPVerifyView(APIView):
             return Response({"message": "Email verified successfully"}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
+
+
+
+@extend_schema(
+    request=ResendOTPSerializer,
+    responses={
+        200: OpenApiExample(
+            "OTP Sent",
+            value={"message": "A new OTP has been sent to your email."},
+            summary="Successfully resent OTP"
+        ),
+        400: OpenApiExample(
+            "Validation Error",
+            value={"email": ["No user found with this email."]},
+            summary="Validation or resend cooldown error"
+        )
+    },
+    description="Resend a verification OTP to a user's email",
+    summary="Resend verification OTP"
+)
+class ResendOTPView(APIView):
+    permission_classes = []
+    authentication_classes = []
+
+    def post(self, request):
+        serializer = ResendOTPSerializer(data=request.data)
+        if serializer.is_valid():
+            result = serializer.save()
+            return Response(result, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
