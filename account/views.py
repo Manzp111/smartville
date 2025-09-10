@@ -10,6 +10,8 @@ from django.utils import timezone
 from pytz import timezone as pytz_timezone
 
 from drf_spectacular.utils import extend_schema, OpenApiExample, OpenApiParameter
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
 
 from .serializers import (
     RegisterSerializer,
@@ -41,8 +43,8 @@ from .utils import generate_otp
             'Register Example',
             value={
                 "email": "gilbertnshimyimana11@gmail.com",
-                "password": "Ng635188@",
-                "confirm_password": "Ng635188@",
+                "password": "Ng112233@",
+                "confirm_password": "Ng112233@",
                 "person": {
                     "first_name": "Gilbert",
                     "last_name": "Nshimyimana",
@@ -202,6 +204,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
             OpenApiParameter("page_size", description="Number of users per page", required=False, type=int),
         ],
         description="List all users with filtering, search, ordering, and pagination",
+        summary="List users for admin only",
         examples=[
             OpenApiExample(
                 "Users List Example",
@@ -218,7 +221,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
                             "person": {
                                 "first_name": "Gilbert",
                                 "last_name": "Nshimyimana",
-                                "phone_number": "250788123456",
+                                
                                 "location": {
                                     "province": "Kigali",
                                     "district": "Gasabo",
@@ -244,10 +247,81 @@ class AdminUserViewSet(viewsets.ModelViewSet):
             "message": "Users retrieved successfully",
             "data": response.data
         })
+    
+    @extend_schema(
+        summary="Create a new user",
+        description="Admin can create a new user with associated person and location info.",
+        request=UserListSerializer,
+        examples=[
+            OpenApiExample(
+                'Create User Example',
+                value={
+                    "email": "gilbertnshimyimana11@gmail.com",
+                    "password": "Ng112233@",
+                    "confirm_password": "Ng112233@",
+                    "role": "resident",
+                    "person": {
+                        "first_name": "Gilbert",
+                        "last_name": "Nshimyimana",
+                       
+                        "location": {
+                            "province": "Kigali",
+                            "district": "Gasabo",
+                            "sector": "Kimihurura",
+                            "cell": "Gisozi",
+                            "village": "Village"
+                        }
+                    }
+                },
+                request_only=True,
+                summary="Example payload to create a user"
+            )
+        ],
+        responses={
+            201: OpenApiExample(
+                'User Created',
+                value={
+                    "success": True,
+                    "message": "User created successfully",
+                    "data": {
+                        "id": "d7b4c8e2-9f62-4f4e-a7b5-1234567890ab",
+                        "email": "gilbertnshimyimana11@gmail.com",
+                        "role": "resident",
+                        "is_verified": False,
+                        "is_active": True,
+                        "person": {
+                            "first_name": "Gilbert",
+                            "last_name": "Nshimyimana",
+                            
+                            "location": {
+                                "province": "Kigali",
+                                "district": "Gasabo",
+                                "sector": "Kimihurura",
+                                "cell": "Gisozi",
+                                "village": "Village"
+                            }
+                        },
+                        "created_at": "2025-09-10T08:00:00Z"
+                    }
+                },
+                response_only=True,
+                summary="Example response after creating a user"
+            )
+        }
+    )
+    def create(self, request, *args, **kwargs):
+        response = super().create(request, *args, **kwargs)
+        # Wrap in consistent response format
+        return Response({
+            "success": True,
+            "message": "User created successfully",
+            "data": response.data
+        }, status=status.HTTP_201_CREATED)
 
     # ---------------- RETRIEVE ----------------
     @extend_schema(
         description="Retrieve a single user by ID",
+        summary="Retrieve user details for admin only",
         examples=[
             OpenApiExample(
                 "User Retrieve Example",
@@ -263,7 +337,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
                         "person": {
                             "first_name": "Gilbert",
                             "last_name": "Nshimyimana",
-                            "phone_number": "250788123456",
+                           
                             "location": {
                                 "province": "Kigali",
                                 "district": "Gasabo",
@@ -285,13 +359,14 @@ class AdminUserViewSet(viewsets.ModelViewSet):
         response = super().retrieve(request, *args, **kwargs)
         return Response({
             "success": True,
-            "message": "User retrieved successfully",
+            "message": "User with given id  retrieved successfully",
             "data": response.data
         })
 
     # ---------------- DELETE ----------------
     @extend_schema(
         description="Delete a user by ID",
+        summary="Delete user for admin only",
         examples=[
             OpenApiExample(
                 "User Delete Example",
@@ -308,6 +383,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
     # ---------------- UPDATE ----------------
     @extend_schema(
         description="Update a user's details by ID",
+        summary="Update user details for admin only",
         examples=[
             OpenApiExample(
                 "User Update Example",
@@ -320,29 +396,140 @@ class AdminUserViewSet(viewsets.ModelViewSet):
     def update(self, request, *args, **kwargs):
         response = super().update(request, *args, **kwargs)
         return Response({"success": True, "message": "User updated successfully", "data": response.data})
-
-    # ---------------- RESEND OTP ----------------
+    
     @extend_schema(
-        summary="Resend OTP to unverified user",
-        description="Resends the verification OTP to the user's email. Only works for unverified users.",
+            summary="Update user partially",
+            description="Admin can partially update user fields (PATCH request).",
+            request=UserListSerializer,
+            examples=[
+                OpenApiExample(
+                    'Update User Example',
+                     value={
+                     
+                        
+                            "id": "d7b4c8e2-9f62-4f4e-a7b5-1234567890ab",
+                            "email": "gilbertnshimyimana11@gmail.com",
+                            "role": "leader",
+                            "is_verified": False,
+                            "is_active": True,
+                            "person": {
+                                "first_name": "Gilbert",
+                                "last_name": "Nshimyimana",
+                                "phone_number": "250788654321",
+                                "location": {
+                                    "province": "Kigali",
+                                    "district": "Gasabo",
+                                    "sector": "Kimihurura",
+                                    "cell": "Kimisagara",
+                                    "village": "New Village Name"
+                                }
+                            },
+                            "updated_at": "2025-09-10T12:00:00Z"
+                        
+                    },
+                    request_only=True,
+                    summary="Example payload to partially update a user"
+                )
+            ],
+            responses={
+                200: OpenApiExample(
+                    'User Updated',
+                    value={
+                        "success": True,
+                        "message": "User updated successfully",
+                        "data": {
+                            "id": "d7b4c8e2-9f62-4f4e-a7b5-1234567890ab",
+                            "email": "gilbertnshimyimana11@gmail.com",
+                            "role": "leader",
+                            "is_verified": False,
+                            "is_active": True,
+                            "person": {
+                                "first_name": "Gilbert",
+                                "last_name": "Nshimyimana",
+                                "phone_number": "250788654321",
+                                "location": {
+                                    "province": "Kigali",
+                                    "district": "Gasabo",
+                                    "sector": "Kimihurura",
+                                    "cell": "Kimisagara",
+                                    "village": "New Village Name"
+                                }
+                            },
+                            "updated_at": "2025-09-10T12:00:00Z"
+                        }
+                    },
+                    response_only=True,
+                    summary="Example response after updating a user"
+                )
+            }
+        )
+    def partial_update(self, request, *args, **kwargs):
+            response = super().partial_update(request, *args, **kwargs)
+            return Response({
+                "success": True,
+                "message": "User updated successfully",
+                "data": response.data
+            }, status=status.HTTP_200_OK)
+
+        # ---------------- RESEND OTP ----------------
+    @extend_schema(
+        summary="Resend verification OTP",
+        description=(
+            "Resends the email verification OTP to the user's registered email address. "
+            "This endpoint works only for users who have not verified their email yet."
+        ),
+        parameters=[
+            OpenApiParameter(
+                "pk", description="ID of the user to resend OTP", required=True, type=str
+            )
+        ],
         examples=[
             OpenApiExample(
                 'OTP Resent Example',
-                value={"success": True, "message": "OTP resent to user@example.com"},
+                value={
+                    "success": True,
+                    "message": "OTP resent to gilbertnshimyimana11@gmail.com"
+                },
                 summary="OTP successfully resent",
+                response_only=True
             ),
             OpenApiExample(
                 'Already Verified Example',
-                value={"success": False, "message": "User is already verified."},
+                value={
+                    "success": False,
+                    "message": "User is already verified."
+                },
                 summary="Cannot resend OTP to verified user",
+                response_only=True
             )
-        ]
+        ],
+        responses={
+            200: OpenApiExample(
+                'OTP Resent Response',
+                value={
+                    "success": True,
+                    "message": "OTP resent to gilbertnshimyimana11@gmail.com"
+                },
+                response_only=True
+            ),
+            400: OpenApiExample(
+                'Already Verified Response',
+                value={
+                    "success": False,
+                    "message": "User is already verified."
+                },
+                response_only=True
+            )
+        }
     )
     @action(detail=True, methods=['post'], url_path='resend-otp')
     def resend_otp(self, request, pk=None):
         user = self.get_object()
         if user.is_verified:
-            return Response({"success": False, "message": "User is already verified."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"success": False, "message": "User is already verified."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         otp = generate_otp(user, purpose="verification")
         send_verification_email_task.delay(
@@ -351,4 +538,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
             user.email,
             otp.code
         )
-        return Response({"success": True, "message": f"OTP resent to {user.email}"}, status=status.HTTP_200_OK)
+        return Response(
+            {"success": True, "message": f"OTP resent to {user.email}"},
+            status=status.HTTP_200_OK
+        )

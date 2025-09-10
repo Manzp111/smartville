@@ -1,7 +1,7 @@
 from rest_framework import permissions
 
 class IsAdminUser(permissions.BasePermission):
-    message = "Access denied: Admins  verified email."
+    message = "Access denied: only admin can access this page."
     def has_permission(self, request, view):
         return bool(
             request.user
@@ -13,7 +13,7 @@ class IsAdminUser(permissions.BasePermission):
         )
 
 class IsLeaderOrAdmin(permissions.BasePermission):
-    message = "Access denied: village only and must be verified."
+    message = "Access denied: only village Leaders  and  admin can acess this page"
     def has_permission(self, request, view):
         return bool(
             request.user
