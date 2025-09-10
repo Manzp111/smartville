@@ -1,6 +1,6 @@
 from pathlib import Path
 from decouple import config
-import dj_database_url
+#import dj_database_url
 import os
 import sys
 from datetime import timedelta
@@ -34,8 +34,10 @@ INSTALLED_APPS = [
     # Local apps
     'account',
     'Location',
+    'event',
     'Resident',
     'vistor',
+
 ]
 
 MIDDLEWARE = [
@@ -69,14 +71,14 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'SmartVillage.wsgi.application'
 
-# DATABASE (Supabase PostgreSQL)
-# Use DIRECT_URL only for migrations, otherwise DATABASE_URL
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+
 
 # PASSWORD VALIDATION
 AUTH_PASSWORD_VALIDATORS = [
@@ -154,3 +156,7 @@ CELERY_TIMEZONE = "Africa/Kigali"
 
 # CORS
 CORS_ALLOWED_ORIGINS = [origin for origin in config('CORS_ALLOWED_ORIGINS', default='').split(',') if origin]
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
