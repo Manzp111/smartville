@@ -1,6 +1,6 @@
 from pathlib import Path
 from decouple import config
-import dj_database_url
+#import dj_database_url
 import os
 import sys
 
@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     # Local apps
     'account',
     'Location',
+    'event',
 ]
 
 MIDDLEWARE = [
@@ -64,19 +65,27 @@ WSGI_APPLICATION = 'SmartVillage.wsgi.application'
 
 # DATABASE (Supabase PostgreSQL)
 # Use DIRECT_URL only for migrations, otherwise DATABASE_URL
-active_db_url = (
-    config("DIRECT_URL")
-    if "migrate" in sys.argv
-    else config("DATABASE_URL")
-)
+# active_db_url = (
+#     config("DIRECT_URL")
+#     if "migrate" in sys.argv
+#     else config("DATABASE_URL")
+# )
+
+# DATABASES = {
+#     'default': dj_database_url.config(
+#         default=active_db_url,
+#         conn_max_age=600,   # keep connections alive
+#         ssl_require=True    # Supabase requires SSL
+#     )
+# }
 
 DATABASES = {
-    'default': dj_database_url.config(
-        default=active_db_url,
-        conn_max_age=600,   # keep connections alive
-        ssl_require=True    # Supabase requires SSL
-    )
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
 }
+
 
 # PASSWORD VALIDATION
 AUTH_PASSWORD_VALIDATORS = [
@@ -146,3 +155,7 @@ CELERY_TIMEZONE = "Africa/Kigali"
 
 # CORS
 CORS_ALLOWED_ORIGINS = [origin for origin in config('CORS_ALLOWED_ORIGINS', default='').split(',') if origin]
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+

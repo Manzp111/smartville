@@ -11,5 +11,4 @@ class EventViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.AllowAny]
 
     def perform_create(self, serializer):
-        #serializer.save(organizer=self.request.user)  # put login first
-        serializer.save()
+        serializer.save(organizer=self.request.user)
