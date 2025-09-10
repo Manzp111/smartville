@@ -26,10 +26,13 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'django_celery_beat',
     'corsheaders',
+    'django_filters',
     
     # Local apps
     'account',
     'Location',
+    'Resident',
+    'vistor',
 ]
 
 MIDDLEWARE = [
@@ -109,6 +112,7 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.BasicAuthentication',
         'rest_framework.authentication.TokenAuthentication',
     ),
+    "EXCEPTION_HANDLER": "account.utils.custom_exception_handler"
 }
 
 SPECTACULAR_SETTINGS = {
