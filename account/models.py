@@ -138,6 +138,9 @@ class OTP(models.Model):
     def is_expired(self):
         now = timezone.now().astimezone(pytz.timezone('Africa/Kigali'))
         return now > self.created_at + timedelta(minutes=30)
+    
+    def is_valid(self):
+        return not self.is_expired() and not self.is_used
 
     def __str__(self):
         return f"{self.user.email} - {self.purpose} - {self.code}"
