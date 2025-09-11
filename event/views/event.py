@@ -1,20 +1,17 @@
-from rest_framework import viewsets, status
-from drf_spectacular.utils import extend_schema, OpenApiResponse,OpenApiResponse, OpenApiExample
-from .models import Event
-from .serializers import EventSerializer
-from .utils import success_response, error_response
-from rest_framework import permissions
+from rest_framework import viewsets, status, permissions
+from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
+from event.models import Event
+from event.serializers import EventSerializer
+from event.utils import success_response, error_response
 
 class EventViewSet(viewsets.ModelViewSet):
     queryset = Event.objects.all().order_by("-created_at")
     serializer_class = EventSerializer
     permission_classes = [permissions.IsAuthenticated]
-    
 
     def perform_create(self, serializer):
         serializer.save(organizer=self.request.user)
 
-    # ---------- Consistent Responses ----------
     @extend_schema(
         responses={
             201: OpenApiResponse(response=EventSerializer, description="Event created successfully"),
@@ -39,7 +36,7 @@ class EventViewSet(viewsets.ModelViewSet):
 
     @extend_schema(
         responses={200: EventSerializer(many=True)},
-        summary="retiving event"
+        summary="retrieve events"
     )
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
@@ -51,7 +48,7 @@ class EventViewSet(viewsets.ModelViewSet):
 
     @extend_schema(
         responses={200: EventSerializer},
-        summary="retrieving one event by id"
+        summary="retrieve event by id"
     )
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -63,7 +60,7 @@ class EventViewSet(viewsets.ModelViewSet):
 
     @extend_schema(
         responses={200: EventSerializer},
-        summary="update one event by idd"
+        summary="update event by id"
     )
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop("partial", False)
@@ -84,19 +81,19 @@ class EventViewSet(viewsets.ModelViewSet):
     @extend_schema(
         responses={204: OpenApiResponse(description="Event deleted successfully")},
         summary="delete event by id"
-
     )
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
         self.perform_destroy(instance)
         return success_response(
-            data=instance,
+            data=None,
             message="Event deleted successfully",
             status_code=status.HTTP_204_NO_CONTENT
         )
+
     @extend_schema(
-        request=EventSerializer,  # request schema (all fields optional)
-        summary="update event patially",
+        request=EventSerializer,
+        summary="partially update event",
         responses={
             200: OpenApiResponse(response=EventSerializer, description="Event updated successfully"),
             400: OpenApiResponse(description="Validation error"),
@@ -116,7 +113,6 @@ class EventViewSet(viewsets.ModelViewSet):
             OpenApiExample(
                 "Successful Update Response",
                 description="Example of a successful event update response",
-                
                 value={
                     "status": "success",
                     "message": "Event updated successfully",
@@ -134,10 +130,9 @@ class EventViewSet(viewsets.ModelViewSet):
                     }
                 },
                 response_only=True
-                
             )
         ]
     )
     def partial_update(self, request, *args, **kwargs):
         kwargs['partial'] = True
-        return super().update(request, *args, **kwargs)
+        return self.update(request, *args, **kwargs)

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Event
+from .models import Event, EventAttendance
 
 class EventSerializer(serializers.ModelSerializer):
     image = serializers.ImageField(required=False, allow_null=True)
@@ -24,3 +24,13 @@ class EventSerializer(serializers.ModelSerializer):
         if obj.image:
             return request.build_absolute_uri(obj.image.url)
         return None
+    
+
+
+
+class EventAttendanceSerializer(serializers.ModelSerializer):
+    
+    class Meta:
+        model = EventAttendance
+        fields = ['id', 'event', 'person', 'joined_at']
+        read_only_fields = ['id', 'joined']
