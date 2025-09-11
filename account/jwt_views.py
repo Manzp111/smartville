@@ -39,7 +39,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         OpenApiExample(
             "Login Example",
             value={
-                "email": "gilbertnshimyimana11@gmail.com",
+                "email": "gilbertnshimyimana130@gmail.com",
                 "password": "Ng112233@"
             },
             request_only=True,
@@ -55,7 +55,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
                     "refresh": "<refresh_token>",
                     "user": {
                         "id": 1,
-                        "email": "gilbertnshimyimana11@gmail.com",
+                        "email": "gilbertnshimyimana130@gmail.com",
                         "role": "resident"
                     }
                 }
