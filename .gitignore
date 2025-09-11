@@ -20,6 +20,7 @@ db.sqlite3
 
 # PyCharm / IDE files
 .idea/
+.vscode/
 *.iml
 
 # OS files
@@ -28,5 +29,6 @@ Thumbs.db
 
 # Logs
 *.log
+
 
 
