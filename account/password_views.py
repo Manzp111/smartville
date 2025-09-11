@@ -26,7 +26,7 @@ class PasswordResetRequestView(APIView):
             OpenApiExample(
                 name="Request Example",
                 summary="Requesting OTP",
-                value={"email": "gilbertnshimyimana11@gmail.com"},
+                value={"email": "gilbertnshimyimana130@gmail.com"},
                 request_only=True
             ),
         ],
@@ -79,7 +79,7 @@ class PasswordResetView(APIView):
                 name="Request Example",
                 summary="Resetting password with OTP",
                 value={
-                    "email": "gilbertnshimyimana11@gmail.com",
+                    "email": "gilbertnshimyimana130@gmail.com",
                     "otp": "123456",
                     "new_password": "Ngo123456!"
                 },

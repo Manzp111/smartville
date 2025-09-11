@@ -15,7 +15,7 @@ from pytz import timezone as pytz_timezone
 class PersonSerializer(serializers.ModelSerializer):
     class Meta:
         model = Person
-        fields = ["first_name", "last_name", "phone_number", "location"]
+        fields = ["first_name", "last_name", "phone_number"]
 
 
 # -----------------------------
