@@ -1,6 +1,6 @@
 from pathlib import Path
 from decouple import config
-#import dj_database_url
+import dj_database_url
 import os
 import sys
 from datetime import timedelta
@@ -72,13 +72,25 @@ TEMPLATES = [
 WSGI_APPLICATION = 'SmartVillage.wsgi.application'
 
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
-}
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
+#     }
+# }
+# databas_url=config("DATABASE_URL")
 
+# DATABASES["default"]=dj_database_url.parse(databas_url,conn_max_age=600)
+
+
+DATABASE_URL = config("DATABASE_URL")  # Get URL from environment variable
+
+if not DATABASE_URL:
+    raise Exception("DATABASE_URL environment variable not set")
+
+DATABASES = {
+    "default": dj_database_url.parse(DATABASE_URL, conn_max_age=600)
+}
 
 # PASSWORD VALIDATION
 AUTH_PASSWORD_VALIDATORS = [
