@@ -21,8 +21,7 @@ class Person(models.Model):
     first_name = models.CharField(max_length=30, blank=True, null=True)
     last_name = models.CharField(max_length=30, blank=True, null=True)
     national_id = models.BigIntegerField(unique=True, null=True, blank=True)
-    phone_number = models.CharField(max_length=15, unique=True, null=True, blank=True)
-    location = models.ForeignKey("Location.Location", on_delete=models.SET_NULL, null=True, blank=True)
+    phone_number = models.CharField(max_length=15, unique=True, null=True, blank=True)   
     gender = models.CharField(max_length=10, choices=GENDER_CHOICES, null=True, blank=True)
     person_type = models.CharField(max_length=10, choices=PERSON_TYPE_CHOICES, default='resident')
     registration_date = models.DateField(auto_now_add=True)
@@ -138,6 +137,9 @@ class OTP(models.Model):
     def is_expired(self):
         now = timezone.now().astimezone(pytz.timezone('Africa/Kigali'))
         return now > self.created_at + timedelta(minutes=30)
+    
+    def is_valid(self):
+        return not self.is_expired() and not self.is_used
 
     def __str__(self):
         return f"{self.user.email} - {self.purpose} - {self.code}"

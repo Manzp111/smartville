@@ -9,9 +9,9 @@ class UserAdmin(admin.ModelAdmin):
     ordering = ('email',)
 @admin.register(Person)
 class PersonAdmin(admin.ModelAdmin):
-    list_display = ('first_name', 'last_name', 'phone_number', 'location')
+    list_display = ('first_name', 'last_name', 'phone_number')
     search_fields = ('first_name', 'last_name', 'phone_number')
-    list_filter = ('location',)
+    # list_filter = ('location',)
     ordering = ('first_name',)
 
 @admin.register(OTP)

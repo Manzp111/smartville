@@ -42,7 +42,7 @@ from .utils import generate_otp
         OpenApiExample(
             'Register Example',
             value={
-                "email": "gilbertnshimyimana11@gmail.com",
+                "email": "gilbertnshimyimana130@gmail.com",
                 "password": "Ng112233@",
                 "confirm_password": "Ng112233@",
                 "person": {
@@ -99,7 +99,7 @@ class RegisterView(APIView):
         OpenApiExample(
             'OTP Verify Example',
             value={
-                "email": "gilbertnshimyimana11@gmail.com",
+                "email": "gilbertnshimyimana130@gmail.com",
                 "otp_code": "123456"
 
             },
@@ -187,7 +187,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
     pagination_class = UserPagination
 
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['role', 'is_verified', 'is_active', 'person__location']
+    filterset_fields = ['role', 'is_verified', 'is_active']
     search_fields = ['email', 'person__first_name', 'person__last_name']
     ordering_fields = ['email', 'created_at', 'role']
 
@@ -214,7 +214,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
                     "data": [
                         {
                             "user_id": "d7b4c8e2-9f62-4f4e-a7b5-1234567890ab",
-                            "email": "gilbertnshimyimana11@gmail.com",
+                            "email": "gilbertnshimyimana130@gmail.com",
                             "role": "resident",
                             "is_verified": True,
                             "is_active": True,
@@ -256,7 +256,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
             OpenApiExample(
                 'Create User Example',
                 value={
-                    "email": "gilbertnshimyimana11@gmail.com",
+                    "email": "gilbertnshimyimana130@gmail.com",
                     "password": "Ng112233@",
                     "confirm_password": "Ng112233@",
                     "role": "resident",
@@ -285,7 +285,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
                     "message": "User created successfully",
                     "data": {
                         "id": "d7b4c8e2-9f62-4f4e-a7b5-1234567890ab",
-                        "email": "gilbertnshimyimana11@gmail.com",
+                        "email": "gilbertnshimyimana130@gmail.com",
                         "role": "resident",
                         "is_verified": False,
                         "is_active": True,
@@ -330,7 +330,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
                     "message": "User retrieved successfully",
                     "data": {
                         "user_id": "d7b4c8e2-9f62-4f4e-a7b5-1234567890ab",
-                        "email": "gilbertnshimyimana11@gmail.com",
+                        "email": "gilbertnshimyimana130@gmail.com",
                         "role": "resident",
                         "is_verified": True,
                         "is_active": True,
@@ -408,7 +408,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
                      
                         
                             "id": "d7b4c8e2-9f62-4f4e-a7b5-1234567890ab",
-                            "email": "gilbertnshimyimana11@gmail.com",
+                            "email": "gilbertnshimyimana130@gmail.com",
                             "role": "leader",
                             "is_verified": False,
                             "is_active": True,
@@ -439,7 +439,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
                         "message": "User updated successfully",
                         "data": {
                             "id": "d7b4c8e2-9f62-4f4e-a7b5-1234567890ab",
-                            "email": "gilbertnshimyimana11@gmail.com",
+                            "email": "gilbertnshimyimana130@gmail.com",
                             "role": "leader",
                             "is_verified": False,
                             "is_active": True,
@@ -488,7 +488,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
                 'OTP Resent Example',
                 value={
                     "success": True,
-                    "message": "OTP resent to gilbertnshimyimana11@gmail.com"
+                    "message": "OTP resent to gilbertnshimyimana130@gmail.com"
                 },
                 summary="OTP successfully resent",
                 response_only=True
@@ -508,7 +508,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
                 'OTP Resent Response',
                 value={
                     "success": True,
-                    "message": "OTP resent to gilbertnshimyimana11@gmail.com"
+                    "message": "OTP resent to gilbertnshimyimana130@gmail.com"
                 },
                 response_only=True
             ),

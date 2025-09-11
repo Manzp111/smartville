@@ -35,3 +35,8 @@ def cleanup_otps():
     
     return f"Deleted {expired_otps.count()} expired OTPs"
 
+@shared_task
+def send_password_reset_email(email, code):
+    subject = "Your Password Reset OTP"
+    message = f"Use this OTP to reset your password: {code}. Valid for 10 minutes."
+    send_mail(subject, message, "gilbertnshimyimana130@gmail.com", [email])
