@@ -1,5 +1,8 @@
 from rest_framework import serializers
 
+from rest_framework import serializers
+from .models import Location
+
 class LocatePointSerializer(serializers.Serializer):
     latitude = serializers.FloatField(
         required=True,
@@ -13,3 +16,11 @@ class LocatePointSerializer(serializers.Serializer):
         max_value=180.0,
         help_text="Longitude must be between -180 and 180."
     )
+
+
+
+
+class LocationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Location
+        fields = ['village_id', 'province', 'district', 'sector', 'cell', 'village']
