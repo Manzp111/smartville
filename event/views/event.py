@@ -10,7 +10,10 @@ class EventViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def perform_create(self, serializer):
-        serializer.save(organizer=self.request.user)
+        user = self.request.user
+        person = getattr(user, 'person', None)
+        village = getattr(person, 'location', None)
+        serializer.save(organizer=user, village=village)
 
     @extend_schema(
         responses={

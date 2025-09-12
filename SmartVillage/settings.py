@@ -37,6 +37,8 @@ INSTALLED_APPS = [
     'event',
     'Resident',
     'vistor',
+    'complaint',
+    'alert',
 
 ]
 

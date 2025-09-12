@@ -10,6 +10,8 @@ urlpatterns = [
      path('', TemplateView.as_view(template_name='home/home.html'), name='home'),
     path('user/',include('account.urls')),
     path('api/event/',include('event.urls')),
+    path('api/complaint/', include('complaint.urls')),
+    path('api/alert/', include('alert.urls')),
     path('',include('Location.urls')),
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     # Optional UI:

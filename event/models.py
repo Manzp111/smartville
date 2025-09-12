@@ -3,6 +3,7 @@ import uuid
 from django.db import models
 from account.models import Person
 from django.conf import settings
+from Location.models import Location
 
 
 STATUS_CHOICES = [
@@ -33,6 +34,8 @@ class Event(models.Model):
     image = models.ImageField(upload_to="events/images/", null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    village = models.ForeignKey(Location, on_delete=models.CASCADE, related_name='events')
 
     def __str__(self):
         return f"{self.title} ({self.date})"
