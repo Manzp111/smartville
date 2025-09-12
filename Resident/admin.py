@@ -3,7 +3,7 @@ from .models import Resident
 
 @admin.register(Resident)
 class ResidentAdmin(admin.ModelAdmin):
-    list_display = ('person', 'location', 'has_account', 'added_by', 'is_deleted', 'created_at', 'updated_at')
+    list_display = ('person', 'location', 'has_account', 'added_by', 'status', 'created_at', 'updated_at')
     search_fields = ('person__first_name', 'person__last_name', 'location__village', 'location__cell', 'location__sector')
     list_filter = ('has_account', 'is_deleted', 'location__province', 'location__district', 'location__sector')
     ordering = ('location__province', 'location__district', 'location__sector', 'person__first_name')

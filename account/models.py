@@ -85,7 +85,8 @@ ROLE_CHOICES = [
 ]
 
 class User(AbstractBaseUser, PermissionsMixin):
-    user_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    # user_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    user_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     person = models.ForeignKey(Person, on_delete=models.SET_NULL, null=True, blank=True)
     email = models.EmailField(unique=True, db_index=True)
     password = models.CharField(max_length=128)

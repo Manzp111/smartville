@@ -5,15 +5,16 @@ from rest_framework import routers
 
 
 # Import your ViewSets
-from .views import LocationViewSet, ResidentViewSet
+from .views import  ResidentViewSet
 
 router = routers.DefaultRouter()
-router.register(r'locations', LocationViewSet)
-router.register(r'residents', ResidentViewSet)
+# router.register(r'locations', LocationViewSet)
+# router.register(r'residents', ResidentViewSet)
+router.register(r"resident", ResidentViewSet, basename="resident")
 
 urlpatterns = [
     
-    path('resident/', include(router.urls)),
+    path('', include(router.urls)),
 
  
 ]
