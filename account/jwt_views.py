@@ -5,32 +5,8 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, Toke
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from drf_spectacular.utils import extend_schema, OpenApiExample
 from .models import User
+from .jwt_serializers import CustomTokenObtainPairSerializer
 
-
-class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
-    def validate(self, attrs):
-        data = super().validate(attrs)
-
-        # Check if user is verified
-        if not self.user.is_verified:
-            raise serializers.ValidationError({
-                "status": "error",
-                "message": "Email not verified"
-            })
-
-        return {
-            "status": "success",
-            "message": "Login successful",
-            "data": {
-                "access": data["access"],
-                "refresh": data["refresh"],
-                "user": {
-                    "id": self.user.user_id,
-                    "email": self.user.email,
-                    "role": self.user.role
-                }
-            }
-        }
 
 @extend_schema(
     request=CustomTokenObtainPairSerializer,
@@ -48,7 +24,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         OpenApiExample(
             "Login Success Response",
             value={
-                "status": "success",
+                "success": True,
                 "message": "Login successful",
                 "data": {
                     "access": "<access_token>",
@@ -66,7 +42,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         OpenApiExample(
             "Email Not Verified",
             value={
-                "status": "error",
+                "success": False,
                 "message": "Email not verified"
             },
             response_only=True,
@@ -74,6 +50,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         )
     ],
 )
+
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
 
@@ -111,6 +88,38 @@ class CustomTokenObtainPairView(TokenObtainPairView):
         )
     ]
 )
+
+@extend_schema(
+    request=TokenRefreshSerializer,
+    summary="Refresh JWT token",
+    examples=[
+        OpenApiExample(
+            "Refresh Token Request",
+            value={"refresh": "<refresh_token>"},
+            request_only=True,
+            summary="Refresh token payload"
+        ),
+        OpenApiExample(
+            "Refresh Token Success",
+            value={
+                "success": True,
+                "message": "Token refreshed successfully",
+                "data": {"access": "<new_access_token>"}
+            },
+            response_only=True,
+            summary="Successful token refresh response"
+        ),
+        OpenApiExample(
+            "Invalid Refresh Token",
+            value={
+                "success": False,
+                "message": "Invalid refresh token"
+            },
+            response_only=True,
+            summary="Response if refresh token is invalid"
+        )
+    ]
+)
 class CustomTokenRefreshView(TokenRefreshView):
     serializer_class = TokenRefreshSerializer
 
@@ -120,12 +129,12 @@ class CustomTokenRefreshView(TokenRefreshView):
         try:
             serializer.is_valid(raise_exception=True)
             return Response({
-                "status": "success",
+                "success": True,
                 "message": "Token refreshed successfully",
                 "data": serializer.validated_data
             }, status=status.HTTP_200_OK)
         except Exception:
             return Response({
-                "status": "error",
+                "success": False,
                 "message": "Invalid refresh token"
             }, status=status.HTTP_400_BAD_REQUEST)

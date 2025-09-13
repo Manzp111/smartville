@@ -390,7 +390,7 @@ class ResidentViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(queryset, many=True)
         return success_response(serializer.data, "Residents retrieved successfully")
 
-    @extend_schema(exclude=True)  # Exclude the default destroy method since we have soft_delete
+    @extend_schema(exclude=True)  
     def destroy(self, request, *args, **kwargs):
         """Permanent delete - only for admin use"""
         return super().destroy(request, *args, **kwargs)

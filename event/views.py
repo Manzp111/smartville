@@ -4,26 +4,63 @@ from .models import Event
 from .serializers import EventSerializer
 from .utils import success_response, error_response
 from rest_framework import permissions
+from Resident.models import Resident
+from rest_framework.exceptions import MethodNotAllowed
+from .mixins import EventRolePermissionMixin
 
-class EventViewSet(viewsets.ModelViewSet):
+
+
+class EventViewSet(EventRolePermissionMixin,viewsets.ModelViewSet):
     queryset = Event.objects.all().order_by("-created_at")
     serializer_class = EventSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    # permission_classes = [permissions.AllowAny]
+    # def get_permissions(self):
+    #     if self.action=="create" :
+    #         return [permissions.IsAuthenticated()]   
+        
+    #     return [permissions.AllowAny()]    
+        
+       
     
 
     def perform_create(self, serializer):
-        serializer.save(organizer=self.request.user)
-
-    # ---------- Consistent Responses ----------
+        user = self.request.user
+        try:
+            # Get the resident linked to this user
+            resident = Resident.objects.get(person__user=user, is_deleted=False)
+            village = resident.location
+        except Resident.DoesNotExist:
+            village = None  # or raise an error if you want to enforce a resident
+        serializer.save(organizer=user, village=village)
+    
     @extend_schema(
+        
+        summary="create event",
+        description="if user created event it directly it automaticaly assigned to him as organizers and need the leader approval",
+        request=EventSerializer,
         responses={
             201: OpenApiResponse(response=EventSerializer, description="Event created successfully"),
             400: OpenApiResponse(description="Validation error"),
         },
-        summary="create event"
+        examples=[
+            OpenApiExample(
+           
+                name="create event",
+                value={
+                     "title": "umuganda",
+                    "description": "hari umuganda usoza ukwezi kuwa 30 kanama",
+                    "location": "uzabera kukagari",
+                    "date": "2025-09-13",
+                    "start_time": "16:53:40.782Z",
+                    "end_time": "16:53:40.782Z",
+                    "image": "none"
+                }
+            ),
+        ],
     )
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
+        
         if serializer.is_valid():
             self.perform_create(serializer)
             return success_response(
@@ -32,18 +69,59 @@ class EventViewSet(viewsets.ModelViewSet):
                 status_code=status.HTTP_201_CREATED
             )
         return error_response(
-            message="Validation failed",
+            
             errors=serializer.errors,
             status_code=status.HTTP_400_BAD_REQUEST
         )
 
     @extend_schema(
+        summary="retiving event acoording to the requester if admin you aceess all if leader you access your villages",
+        description="retriving list of event ",
+        request=EventSerializer,
         responses={200: EventSerializer(many=True)},
-        summary="retiving event"
+        examples=[
+            OpenApiExample(
+                name="retrive event according to the loged in user ",
+                summary="example of event data to be retrived",
+                value={
+                    "title": "gukingira",
+                    "description": "abaganga bazaza gukingira abana kumashuri",
+                    "village": {
+                        "village_id": "92bcb9ea-b084-4234-9ae7-22a67db3c018",
+                        "province": "Amajyaruguru",
+                        "district": "Burera",
+                        "sector": "Bungwe",
+                        "cell": "Bungwe",
+                        "village": "Gakeri"
+                    },
+                    "location": "kigali",
+                    "date": "2025-09-27",
+                    "start_time": "15:29:00",
+                    "end_time": "22:34:00",
+                    "organizer": {
+                        "person": {
+                        "first_name": "Ndacyayisenga",
+                        "last_name": "Aloys",
+                        "phone_number": "null"
+                        }
+                    },
+                    "image": "null",
+                    "image_url": "null",
+                    "status": "PENDING",
+                    "created_at": "2025-09-13T15:31:21.848041+02:00",
+                    
+    
+
+
+                }
+
+            )
+        ],
     )
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
         serializer = self.get_serializer(queryset, many=True)
+        
         return success_response(
             data=serializer.data,
             message="Events retrieved successfully"
@@ -61,25 +139,11 @@ class EventViewSet(viewsets.ModelViewSet):
             message="Event retrieved successfully"
         )
 
-    @extend_schema(
-        responses={200: EventSerializer},
-        summary="update one event by idd"
-    )
+    @extend_schema(exclude=True)
     def update(self, request, *args, **kwargs):
-        partial = kwargs.pop("partial", False)
-        instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=partial)
-        if serializer.is_valid():
-            self.perform_update(serializer)
-            return success_response(
-                data=serializer.data,
-                message="Event updated successfully"
-            )
-        return error_response(
-            message="Validation failed",
-            errors=serializer.errors,
-            status_code=status.HTTP_400_BAD_REQUEST
-        )
+            raise MethodNotAllowed("PUT", detail="Updating events is disabled.")
+
+
 
     @extend_schema(
         responses={204: OpenApiResponse(description="Event deleted successfully")},
@@ -108,8 +172,16 @@ class EventViewSet(viewsets.ModelViewSet):
                 "Partial Update Example",
                 description="Update only the event title and location",
                 value={
-                    "title": "Umuganda",
-                    "location": "Huye campus "
+                        "title": "umuganda",
+                        "description": " umuganda w'ukwezi",
+                        "location": "Huye",
+                        "date": "2025-09-12",
+                        "start_time": "09:00:00",
+                        "end_time": "17:00:00",
+                        "organizer": "gilbertnshimyimana130@gmail.com.com",
+                        "image": None,
+                        "created_at": "2025-09-11T08:30:00Z",
+                        "updated_at": "2025-09-11T09:15:00Z"
                 },
                 request_only=True
             ),

@@ -17,6 +17,9 @@ class VillageRolePermissionMixin:
         user = self.request.user
 
         # Admin can see everything
+        if not user.is_authenticated:
+            return qs.none() 
+
         if user.role == 'admin':
             return qs
 
@@ -33,7 +36,7 @@ class VillageRolePermissionMixin:
             # Resident sees only their own posts
             return qs.filter(added_by=user)
 
-        # Default deny
+        
         return qs.none()
 
     def perform_create(self, serializer):
