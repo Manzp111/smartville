@@ -133,6 +133,11 @@ REST_FRAMEWORK = {
     ),
     # "EXCEPTION_HANDLER": "account.utils.custom_exception_handler",
     "EXCEPTION_HANDLER": "event.exception_handler.custom_exception_handler",
+    'DEFAULT_FILTER_BACKENDS': (
+        'django_filters.rest_framework.DjangoFilterBackend',
+    ),
+    'DEFAULT_PAGINATION_CLASS': 'event.pagination.CustomPagination',
+    'PAGE_SIZE': 10,
 }
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),   # short-lived

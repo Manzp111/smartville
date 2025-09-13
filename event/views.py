@@ -8,12 +8,18 @@ from Resident.models import Resident
 from rest_framework.exceptions import PermissionDenied, MethodNotAllowed
 from .mixins import EventRolePermissionMixin
 from Resident.utils import get_resident_location
+from rest_framework import viewsets, filters, status
+from django_filters.rest_framework import DjangoFilterBackend
 
 
 
 class EventViewSet(EventRolePermissionMixin,viewsets.ModelViewSet):
     queryset = Event.objects.all().order_by("-created_at")
     serializer_class = EventSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['status', 'village', 'date'] 
+    search_fields = ['title', 'description', 'date'] 
+    ordering = ['-created_at']
     # permission_classes = [permissions.AllowAny]
     # def get_permissions(self):
     #     if self.action=="create" :
@@ -122,12 +128,13 @@ class EventViewSet(EventRolePermissionMixin,viewsets.ModelViewSet):
     )
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
         serializer = self.get_serializer(queryset, many=True)
-        
-        return success_response(
-            data=serializer.data,
-            message="Events retrieved successfully"
-        )
+        return success_response(data=serializer.data, message="Events retrieved successfully")
 
     @extend_schema(
         responses={200: EventSerializer},
