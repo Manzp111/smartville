@@ -87,7 +87,28 @@ class EventRolePermissionMixin:
     @extend_schema(exclude=True)
     def update(self, request, *args, **kwargs):
         raise MethodNotAllowed("PUT", detail="Updating events is disabled.")
+    
+    def perform_update(self, serializer):
+        user = self.request.user
+        instance = self.get_object()
 
-    @extend_schema(exclude=True)
-    def partial_update(self, request, *args, **kwargs):
-        raise MethodNotAllowed("PATCH", detail="Updating events is disabled.")
+        # Restrict status updates to leader/admin
+        if "status" in serializer.validated_data and user.role not in ["leader", "admin"]:
+            raise PermissionDenied("Only leaders and admins can update the status.")
+
+        # Optional: Leader can update status only in their village
+        if user.role == "leader" and "status" in serializer.validated_data:
+            location = get_resident_location(user)
+            if instance.village != location:
+                raise PermissionDenied("You cannot update status for events outside your village.")
+
+        # Residents can update other fields only for their own events
+        if user.role == "resident" and instance.organizer != user:
+            raise PermissionDenied("You can only update your own events.")
+
+        serializer.save()
+    
+
+    # @extend_schema(exclude=True)
+    # def partial_update(self, request, *args, **kwargs):
+    #     raise MethodNotAllowed("PATCH", detail="Updating events is disabled.")

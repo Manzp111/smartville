@@ -5,8 +5,9 @@ from .serializers import EventSerializer
 from .utils import success_response, error_response
 from rest_framework import permissions
 from Resident.models import Resident
-from rest_framework.exceptions import MethodNotAllowed
+from rest_framework.exceptions import PermissionDenied, MethodNotAllowed
 from .mixins import EventRolePermissionMixin
+from Resident.utils import get_resident_location
 
 
 
@@ -76,12 +77,13 @@ class EventViewSet(EventRolePermissionMixin,viewsets.ModelViewSet):
 
     @extend_schema(
         summary="retiving event acoording to the requester if admin you aceess all if leader you access your villages",
-        description="retriving list of event ",
+        description="retriving list of event  according to user if role is admin he access both if he is leader he acess his own if residents only he acess his own only it is used by dashbord only",
         request=EventSerializer,
         responses={200: EventSerializer(many=True)},
         examples=[
             OpenApiExample(
                 name="retrive event according to the loged in user ",
+                
                 summary="example of event data to be retrived",
                 value={
                     "title": "gukingira",
@@ -212,4 +214,6 @@ class EventViewSet(EventRolePermissionMixin,viewsets.ModelViewSet):
     )
     def partial_update(self, request, *args, **kwargs):
         kwargs['partial'] = True
-        return super().update(request, *args, **kwargs)
+        return super().perform_update(request, *args, **kwargs)
+    
+
