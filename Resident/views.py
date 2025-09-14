@@ -447,27 +447,24 @@ class ResidentViewSet(VillageRolePermissionMixin,viewsets.ModelViewSet):
 
 
     @extend_schema(
-            
-        
-       
+        summary="Migrate resident to a new village",
         examples=[
-        OpenApiExample(
-            "Migrate Resident Example",
-            value={
-                "resident_id": "b2d07fdb-a063-4155-82aa-8736fc493a99",
-                "new_location": {
+            OpenApiExample(
+                "Migration Example",
+                value={
                     "province": "Amajyaruguru",
                     "district": "Burera",
-                    "sector": "Bungwe",
-                    "cell": "Bungwe",
-                    "village": "Bungwe New"
-                }
-            },
-        ),
-        ],
-        summary="Example request to migrate a resident to a new village"
+                    "sector": "Kinyababa",
+                    "cell": "Bugamba",
+                    "village": "Kirwa"
+                },
+                summary="Example migration data"
+            )
+        ]
     )
+
     @action(detail=False, methods=["post"])
+
 
 
 
@@ -475,11 +472,11 @@ class ResidentViewSet(VillageRolePermissionMixin,viewsets.ModelViewSet):
     def migrate_village(self, request):
         """
         Moves a resident to a new village. Soft deletes the old Resident record and creates a new one.
-        Notifies old and new village leaders asynchronously via a single background task.
+        Only allows migration if the new location exists in the database.
+        Notifies old and new village leaders asynchronously.
         """
         user = request.user
         person = getattr(user, "person", None)
-
         if not person:
             return error_response("No person record found for this user.", status_code=400)
 
@@ -493,29 +490,31 @@ class ResidentViewSet(VillageRolePermissionMixin,viewsets.ModelViewSet):
                 status_code=400
             )
 
-        # Find or create the new location
+        # Match the location exactly with existing DB records
         try:
-            new_location, created = Location.objects.get_or_create(
+            new_location = Location.objects.get(
                 province=location_data["province"],
                 district=location_data["district"],
                 sector=location_data["sector"],
                 cell=location_data["cell"],
                 village=location_data["village"]
             )
-        except Exception as e:
-            return error_response(f"Error creating/finding location: {str(e)}", status_code=400)
+        except Location.DoesNotExist:
+            return error_response(
+                "The specified village does not exist in the system. Please check the location data.",
+                status_code=404
+            )
 
         try:
             with transaction.atomic():
                 # Soft delete old resident if exists
                 old_resident = Resident.objects.filter(person=person, is_deleted=False).first()
-                old_village_name = old_leader_email = None
+                old_location_id = None
                 if old_resident:
                     old_resident.is_deleted = True
                     old_resident.deleted_at = timezone.now()
                     old_resident.save()
-                    old_village_name = old_resident.location.village
-                    old_leader_email = old_resident.location.leader.email if old_resident.location.leader else None
+                    old_location_id = old_resident.location.village_id
 
                 # Create new resident record
                 new_resident = Resident.objects.create(
@@ -524,16 +523,12 @@ class ResidentViewSet(VillageRolePermissionMixin,viewsets.ModelViewSet):
                     added_by=user,
                     status="PENDING"
                 )
-                new_village_name = new_location.village
-                new_leader_email = new_location.leader.email if new_location.leader else None
 
-                # Trigger single background task for notifications
+                # Send background notifications to leaders
                 notify_village_leaders_of_migration.delay(
                     resident_name=f"{person.first_name} {person.last_name}",
-                    old_village=old_village_name,
-                    old_leader_email=old_leader_email,
-                    new_village=new_village_name,
-                    new_leader_email=new_leader_email
+                    old_location_id=old_location_id,
+                    new_location_id=new_location.village_id
                 )
 
         except Exception as e:

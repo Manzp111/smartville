@@ -9,11 +9,13 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         data = super().validate(attrs)
 
+
+
         # Check if user is verified
         if not self.user.is_verified:
-            raise serializers.ValidationError({
-                "status": "error",
+            raise serializers.e({
                 "message": "Email not verified"
+                
             })
 
         return {
