@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiResponse, OpenApiExample, OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
 from django_filters.rest_framework import DjangoFilterBackend
+from django.utils import timezone
 
 from .models import Resident, Location
 from .serializers import ResidentSerializer, ResidentStatusSerializer
@@ -15,8 +16,9 @@ from event.utils import success_response, error_response
 from .mixins import VillageRolePermissionMixin
 from django_filters.rest_framework import DjangoFilterBackend
 from .response import errorss__response
-
-
+from django.db import transaction
+from django.utils import timezone
+from .tasks import notify_village_leaders_of_migration
 
 @extend_schema_view(
     list=extend_schema(
@@ -213,11 +215,17 @@ class ResidentViewSet(VillageRolePermissionMixin,viewsets.ModelViewSet):
         except Exception as e:
             return error_response(f"Error creating/finding location: {str(e)}", status_code=400)
         
-        # Check if user is already a resident of this location
-        if Resident.objects.filter(person=person, location=location, is_deleted=False).exists():
-            return error_response("Already a resident of this village", status_code=409)
+        # # Check if user is already a resident of this location
+        # if Resident.objects.filter(person=person, location=location, is_deleted=False).exists():
+        #     return error_response("Already a resident of this village", status_code=409)
         
         # Create resident record with PENDING status
+        existing_resident = Resident.objects.filter(person=person, is_deleted=False).first()
+        if existing_resident:
+           return error_response(
+                     f"You are already a resident in {existing_resident.location.village} village in {existing_resident.location.sector} sector",
+                      status_code=409
+                )
         resident = Resident.objects.create(
             person=person,
             location=location,
@@ -434,4 +442,106 @@ class ResidentViewSet(VillageRolePermissionMixin,viewsets.ModelViewSet):
         
          errors=serializer.errors,
       status_code=status.HTTP_400_BAD_REQUEST
-)
+      )
+    # resident/views.py
+
+
+    @extend_schema(
+            
+        
+       
+        examples=[
+        OpenApiExample(
+            "Migrate Resident Example",
+            value={
+                "resident_id": "b2d07fdb-a063-4155-82aa-8736fc493a99",
+                "new_location": {
+                    "province": "Amajyaruguru",
+                    "district": "Burera",
+                    "sector": "Bungwe",
+                    "cell": "Bungwe",
+                    "village": "Bungwe New"
+                }
+            },
+        ),
+        ],
+        summary="Example request to migrate a resident to a new village"
+    )
+    @action(detail=False, methods=["post"])
+
+
+
+
+    def migrate_village(self, request):
+        """
+        Moves a resident to a new village. Soft deletes the old Resident record and creates a new one.
+        Notifies old and new village leaders asynchronously via a single background task.
+        """
+        user = request.user
+        person = getattr(user, "person", None)
+
+        if not person:
+            return error_response("No person record found for this user.", status_code=400)
+
+        # Validate required location fields
+        location_data = request.data
+        required_fields = ["province", "district", "sector", "cell", "village"]
+        missing_fields = [f for f in required_fields if not location_data.get(f)]
+        if missing_fields:
+            return error_response(
+                f"Missing required location fields: {', '.join(missing_fields)}",
+                status_code=400
+            )
+
+        # Find or create the new location
+        try:
+            new_location, created = Location.objects.get_or_create(
+                province=location_data["province"],
+                district=location_data["district"],
+                sector=location_data["sector"],
+                cell=location_data["cell"],
+                village=location_data["village"]
+            )
+        except Exception as e:
+            return error_response(f"Error creating/finding location: {str(e)}", status_code=400)
+
+        try:
+            with transaction.atomic():
+                # Soft delete old resident if exists
+                old_resident = Resident.objects.filter(person=person, is_deleted=False).first()
+                old_village_name = old_leader_email = None
+                if old_resident:
+                    old_resident.is_deleted = True
+                    old_resident.deleted_at = timezone.now()
+                    old_resident.save()
+                    old_village_name = old_resident.location.village
+                    old_leader_email = old_resident.location.leader.email if old_resident.location.leader else None
+
+                # Create new resident record
+                new_resident = Resident.objects.create(
+                    person=person,
+                    location=new_location,
+                    added_by=user,
+                    status="PENDING"
+                )
+                new_village_name = new_location.village
+                new_leader_email = new_location.leader.email if new_location.leader else None
+
+                # Trigger single background task for notifications
+                notify_village_leaders_of_migration.delay(
+                    resident_name=f"{person.first_name} {person.last_name}",
+                    old_village=old_village_name,
+                    old_leader_email=old_leader_email,
+                    new_village=new_village_name,
+                    new_leader_email=new_leader_email
+                )
+
+        except Exception as e:
+            return error_response(f"Error migrating resident: {str(e)}", status_code=500)
+
+        serializer = ResidentSerializer(new_resident)
+        return success_response(
+            serializer.data,
+            "Resident migrated successfully to new village.",
+            status_code=201
+        )
