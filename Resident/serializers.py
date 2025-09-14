@@ -5,7 +5,6 @@ from Location.serializers import LocationSerializer
 from account.models import Person, User
 
 
-
 class PersonSerializer(serializers.ModelSerializer):
     class Meta:
         model = Person
@@ -21,12 +20,14 @@ class UserSerilaizer(serializers.ModelSerializer):
         fields = ["user_id","person"]
 
 class ResidentSerializer(serializers.ModelSerializer):
-    person = PersonSerializer(read_only=True)
+    person = PersonSerializer()
     location=LocationSerializer(read_only=True)
     added_by = UserSerilaizer(read_only=True)
     added_by_email = serializers.ReadOnlyField(source="added_by.email")
     person_name = serializers.ReadOnlyField(source="person.full_name")
     location_name = serializers.ReadOnlyField(source="location.village")
+    # status = serializers.ChoiceField(choices=STATUS_CHOICES, required=False)
+
 
     class Meta:
         model = Resident
@@ -46,9 +47,18 @@ class ResidentSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["added_by", "added_by_email", "status", "is_deleted", "deleted_at", "created_at", "updated_at"]
+        def create(self, validated_data):
+            person_data = validated_data.pop('person')
+            person = Person.objects.create(**person_data)
+            location = self.context.get('location')
+            user = self.context.get('user')
+            return Resident.objects.create(person=person, location=location, added_by=user, **validated_data)
+                
+
 
 class ResidentStatusSerializer(serializers.ModelSerializer):
     """Only used by leaders/admin to update status"""
     class Meta:
         model = Resident
         fields = ["status"]
+

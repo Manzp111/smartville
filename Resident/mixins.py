@@ -1,5 +1,8 @@
 # account/permissions.py
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, MethodNotAllowed
+from drf_spectacular.utils import extend_schema
+from .tasks import send_new_resident_email
+from account.models import User, Person
 from .utils import get_resident_location
 
 class VillageRolePermissionMixin:
@@ -16,59 +19,71 @@ class VillageRolePermissionMixin:
         qs = super().get_queryset()
         user = self.request.user
 
-        # Admin can see everything
         if not user.is_authenticated:
-            return qs.none() 
+            return qs.none()
 
         if user.role == 'admin':
             return qs
 
-        # Get the resident's village
         location = get_resident_location(user)
 
         if user.role == 'leader':
-            # Leader sees everything in their village
-            if location:
-                return qs.filter(location=location)
-            return qs.none()
+            return qs.filter(location=location) if location else qs.none()
 
         if user.role == 'resident':
-            # Resident sees only their own posts
             return qs.filter(added_by=user)
 
-        
         return qs.none()
 
     def perform_create(self, serializer):
-        """
-        Automatically assign added_by and location for new objects
-        """
         user = self.request.user
-        location = get_resident_location(user)
+        location = None
 
-        if user.role == 'resident' or user.role == 'leader':
+        # Determine location based on role
+        if user.role in ["resident", "leader"]:
+            if hasattr(user, 'residencies') and user.residencies.exists():
+                location = user.residencies.first().location
+            elif hasattr(user, 'led_villages') and user.led_villages.exists():
+                location = user.led_villages.first()
             if not location:
-                raise PermissionDenied("You must be assigned to a village to create content.")
-            serializer.save(added_by=user, location=location)
-        elif user.role == 'admin':
-            # Admin can assign any location manually
-            serializer.save()
-        else:
-            raise PermissionDenied("Invalid role")
+                raise PermissionDenied("You must be assigned to a village to create a resident.")
+        elif user.role == "admin":
+            location = serializer.validated_data.get("location")
+            if not location:
+                raise PermissionDenied("Admin must specify location.")
 
+        # Handle nested 'person' data
+        person_data = serializer.validated_data.pop('person', None)
+        if not person_data:
+            raise PermissionDenied("Person data is required to create a resident.")
+
+        person = Person.objects.create(
+            first_name=person_data.get('first_name'),
+            last_name=person_data.get('last_name'),
+            phone_number=person_data.get('phone_number'),
+            national_id=person_data.get('national_id'),
+            gender=person_data.get('gender'),
+            person_type='resident'
+        )
+
+        # Save Resident with person, location, added_by
+        resident = serializer.save(
+            person=person,
+            location=location,
+            added_by=user
+        )
+
+        # Notify village leader if exists
+        if location and hasattr(location, 'leader') and location.leader and location.leader.email:
+            send_new_resident_email.delay(
+                leader_email=location.leader.email,
+                resident_name=f"{resident.person.first_name} {resident.person.last_name}",
+                village_name=f"{location.village}"
+            )
+
+    @extend_schema(exclude=True)
     def perform_update(self, serializer):
-        user = self.request.user
-        location = get_resident_location(user)
-
-        # Resident can update only their own
-        if user.role == 'resident' and serializer.instance.added_by != user:
-            raise PermissionDenied("You can only modify your own content.")
-
-        # Leader can update only objects in their village
-        if user.role == 'leader' and serializer.instance.location != location:
-            raise PermissionDenied("You cannot modify content from another village.")
-
-        serializer.save()
+        raise MethodNotAllowed("PUT", detail="Updating events is disabled.")
 
     def perform_destroy(self, instance):
         user = self.request.user

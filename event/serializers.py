@@ -18,7 +18,7 @@ class EventSerializer(serializers.ModelSerializer):
     village=LocationSerializer(read_only=True)
     image_url = serializers.SerializerMethodField()  # Safe image URL
     # organizer = serializers.ReadOnlyField(source="organizer.email")
-    status = serializers.CharField(read_only=True)  # Default: read-only for everyone
+    # status = serializers.CharField(read_only=True)  # Default: read-only for everyone
 
     class Meta:
         model = Event

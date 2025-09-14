@@ -12,24 +12,23 @@ from .serializers import ResidentSerializer, ResidentStatusSerializer
 from account.permisions import IsAdminUser, IsLeaderOrAdmin, IsVerifiedUser
 from .tasks import notify_village_leader_new_resident
 from event.utils import success_response, error_response
+from .mixins import VillageRolePermissionMixin
+from django_filters.rest_framework import DjangoFilterBackend
+from .response import errorss__response
+
 
 
 @extend_schema_view(
     list=extend_schema(
         summary="List all residents",
+        request=ResidentSerializer,
         description="""Retrieve a paginated list of residents based on user permissions:
         - **Admins**: See all residents
         - **Leaders**: See residents in their assigned location
         - **Regular Users**: See only their own resident record
         
         Supports filtering, searching, and ordering.""",
-        parameters=[
-            OpenApiParameter(name='status', description='Filter by resident status', required=False, type=OpenApiTypes.STR),
-            OpenApiParameter(name='location', description='Filter by location ID', required=False, type=OpenApiTypes.INT),
-            OpenApiParameter(name='person', description='Filter by person ID', required=False, type=OpenApiTypes.INT),
-            OpenApiParameter(name='search', description='Search by full name or village name', required=False, type=OpenApiTypes.STR),
-            OpenApiParameter(name='ordering', description='Order by created_at or updated_at (prefix with - for descending)', required=False, type=OpenApiTypes.STR),
-        ],
+
         responses={
             200: OpenApiResponse(response=ResidentSerializer(many=True), description="Residents retrieved successfully"),
             403: OpenApiResponse(description="Forbidden - User not authorized"),
@@ -46,7 +45,7 @@ from event.utils import success_response, error_response
         }
     ),
     create=extend_schema(
-        summary="Create a new resident",
+        summary="add a new resident for admin and leader eg like children",
         description="""Create a new resident record. This endpoint is typically used by admins/leaders to register new residents.
         For users joining villages, use the join_village endpoint instead.""",
         request=ResidentSerializer,
@@ -54,18 +53,28 @@ from event.utils import success_response, error_response
             201: OpenApiResponse(response=ResidentSerializer, description="Resident created successfully"),
             400: OpenApiResponse(description="Validation error - Invalid input data"),
             403: OpenApiResponse(description="Forbidden - User not authorized to create residents")
-        }
+        },
+        examples=[
+            OpenApiExample(
+                "Resident Example",
+                value={
+                                        
+                    "person": {
+                        "first_name": "Gilbert",
+                        "last_name": "Nshimyimana",
+                        "national_id": None,
+                        "phone_number": "0788730366",
+                        "gender": "male",
+                        "person_type": "resident"
+                    }
+}
+
+                
+            )
+        ],
     ),
-    update=extend_schema(
-        summary="Update a resident",
-        description="Fully update a resident record. User must have permission to modify this resident.",
-        request=ResidentSerializer,
-        responses={
-            200: OpenApiResponse(response=ResidentSerializer, description="Resident updated successfully"),
-            400: OpenApiResponse(description="Validation error - Invalid input data"),
-            403: OpenApiResponse(description="Forbidden - User not authorized to update this resident"),
-            404: OpenApiResponse(description="Resident not found")
-        }
+    update=extend_schema(  exclude=True  
+    
     ),
     partial_update=extend_schema(
         summary="Partially update a resident",
@@ -90,7 +99,7 @@ from event.utils import success_response, error_response
         }
     )
 )
-class ResidentViewSet(viewsets.ModelViewSet):
+class ResidentViewSet(VillageRolePermissionMixin,viewsets.ModelViewSet):
     """
     ViewSet for managing Resident records with role-based access control.
     
@@ -101,8 +110,8 @@ class ResidentViewSet(viewsets.ModelViewSet):
     serializer_class = ResidentSerializer
     permission_classes = [IsVerifiedUser]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ["status", "location", "person"]
-    search_fields = ["person__full_name", "location__village"]
+    filterset_fields = ["status","person__first_name","created_at"]
+    search_fields = ["person__full_name"]
     ordering_fields = ["created_at", "updated_at"]
     ordering = ["-created_at"]
 
@@ -282,12 +291,24 @@ class ResidentViewSet(viewsets.ModelViewSet):
         }
     )
     @action(detail=True, methods=["patch"], permission_classes=[IsLeaderOrAdmin], serializer_class=ResidentStatusSerializer)
-    def update_status(self, request, pk=None):
-        resident = self.get_object()
-        serializer = ResidentStatusSerializer(resident, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return success_response(self.get_serializer(resident).data, "Resident status updated")
+    def update_status(self, request):
+        resident_ids = request.data.get("resident_ids", [])
+        new_status = request.data.get("status")
+        if not resident_ids or not new_status:
+            return error_response("resident_ids and status are required", 400)
+        queryset = Resident.objects.filter(id__in=resident_ids, is_deleted=False)
+        if not queryset.exists():
+            return error_response("No valid residents found to update", 404)
+        queryset.update(status=new_status)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return success_response(serializer.data, f"Updated status of {queryset.count()} residents")
+
+        # resident = self.get_object()
+        # serializer = ResidentStatusSerializer(resident, data=request.data, partial=True)
+        # serializer.is_valid(raise_exception=True)
+        # serializer.save()
+        # return success_response(self.get_serializer(resident).data, "Resident status updated")
 
     # --------------------- Soft Delete ---------------------
     @extend_schema(
@@ -320,6 +341,8 @@ class ResidentViewSet(viewsets.ModelViewSet):
         }
     )
     @action(detail=True, methods=["delete"], permission_classes=[IsLeaderOrAdmin])
+
+
     def soft_delete(self, request, pk=None):
         resident = self.get_object()
         resident.soft_delete()
@@ -368,29 +391,47 @@ class ResidentViewSet(viewsets.ModelViewSet):
         return success_response(self.get_serializer(resident).data, "Resident restored successfully")
 
     # --------------------- Override default methods for consistent responses ---------------------
-    @extend_schema(
-        summary="List residents",
-        description="Retrieve all residents the user has access to. Supports search, filtering, and pagination.",
-        parameters=[
-            OpenApiParameter(name='page', description='Page number', required=False, type=OpenApiTypes.INT),
-            OpenApiParameter(name='page_size', description='Number of items per page', required=False, type=OpenApiTypes.INT),
-        ],
-        responses={
-            200: OpenApiResponse(response=ResidentSerializer(many=True), description="Residents retrieved successfully"),
-            403: OpenApiResponse(description="Forbidden - User not authorized"),
-            500: OpenApiResponse(description="Internal server error")
-        }
-    )
-    def list(self, request, *args, **kwargs):
-        queryset = self.filter_queryset(self.get_queryset())
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-        serializer = self.get_serializer(queryset, many=True)
-        return success_response(serializer.data, "Residents retrieved successfully")
+    # @extend_schema(
+    #     summary="List tttttttttttttttttttt residents",
+    #     description="Retrieve all residents the user has access to. Supports search, filtering, and pagination.",
+    #     parameters=[
+    #         OpenApiParameter(name='page', description='Page number', required=False, type=OpenApiTypes.INT),
+    #         OpenApiParameter(name='page_size', description='Number of items per page', required=False, type=OpenApiTypes.INT),
+    #     ],
+    #     responses={
+    #         200: OpenApiResponse(response=ResidentSerializer(many=True), description="Residents retrieved successfully"),
+    #         403: OpenApiResponse(description="Forbidden - User not authorized"),
+    #         500: OpenApiResponse(description="Internal server error")
+    #     }
+    # )
+    # def list(self, request, *args, **kwargs):
+    #     queryset = self.filter_queryset(self.get_queryset())
+    #     page = self.paginate_queryset(queryset)
+    #     if page is not None:
+    #         serializer = self.get_serializer(page, many=True)
+    #         return self.get_paginated_response(serializer.data)
+    #     serializer = self.get_serializer(queryset, many=True)
+    #     return success_response(serializer.data, "Residents retrieved successfully")
 
-    @extend_schema(exclude=True)  
+    @extend_schema(
+            summary="delete for admin"
+            
+            )  
     def destroy(self, request, *args, **kwargs):
         """Permanent delete - only for admin use"""
         return super().destroy(request, *args, **kwargs)
+    
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data, context={'user': request.user})
+        if serializer.is_valid():
+            self.perform_create(serializer)
+            return success_response(
+                data=serializer.data, 
+                message="Resident created successfully", 
+                status_code=201
+            )
+        return errorss__response(
+        
+         errors=serializer.errors,
+      status_code=status.HTTP_400_BAD_REQUEST
+)
