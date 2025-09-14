@@ -13,6 +13,7 @@ from event.utils import success_response, error_response  # Import the utils
 from drf_spectacular.utils import extend_schema, OpenApiExample, OpenApiParameter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
+from event.utils import success_response,error_response
 
 from .serializers import (
     RegisterSerializer,
@@ -38,7 +39,7 @@ from .utils import generate_otp
                 "success": True,
                 "message": "Account created. Verify your email using the OTP.",
                 "data": {
-                    "email": "user@example.com"
+                    "email": "gilbertnshimyimana11@gmail.com.com"
                 }
             },
             summary="Account successfully created"
@@ -88,12 +89,8 @@ class RegisterView(APIView):
                 status_code=status.HTTP_201_CREATED
             )
         
-        # Return validation errors using error_response util
-        return error_response(
-            message="Validation failed",
-            errors=serializer.errors,
-            status_code=status.HTTP_400_BAD_REQUEST
-        )
+       
+        return error_response(errors=serializer.errors)
 
 
 # -----------------------------
@@ -217,8 +214,7 @@ class ResendOTPView(APIView):
                 status_code=status.HTTP_200_OK
             )
         
-        return error_response(
-            message="Cannot resend OTP",
+        return error_response(            
             errors=serializer.errors,
             status_code=status.HTTP_400_BAD_REQUEST
         )

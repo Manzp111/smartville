@@ -5,32 +5,36 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, Toke
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from drf_spectacular.utils import extend_schema, OpenApiExample
 from .models import User
+from event.utils import error_response,success_response
+from .error_responses import errorss__response
+from rest_framework_simplejwt.exceptions import AuthenticationFailed
+from rest_framework.exceptions import ValidationError
+from .jwt_serializers import CustomTokenObtainPairSerializer
 
+# class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+#     def validate(self, attrs):
+#         data = super().validate(attrs)
 
-class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
-    def validate(self, attrs):
-        data = super().validate(attrs)
+#         # Check if user is verified
+#         if not self.user.is_verified:
+#             raise serializers.ValidationError({
+                
+#                 "message": "Email not verified"
+#             })
 
-        # Check if user is verified
-        if not self.user.is_verified:
-            raise serializers.ValidationError({
-                "status": "error",
-                "message": "Email not verified"
-            })
-
-        return {
-            "status": "success",
-            "message": "Login successful",
-            "data": {
-                "access": data["access"],
-                "refresh": data["refresh"],
-                "user": {
-                    "id": self.user.user_id,
-                    "email": self.user.email,
-                    "role": self.user.role
-                }
-            }
-        }
+#         return {
+#             "status": "success",
+#             "message": "Login successful",
+#             "data": {
+#                 "access": data["access"],
+#                 "refresh": data["refresh"],
+#                 "user": {
+#                     "id": self.user.user_id,
+#                     "email": self.user.email,
+#                     "role": self.user.role
+#                 }
+#             }
+#         }
 
 @extend_schema(
     request=CustomTokenObtainPairSerializer,
@@ -74,10 +78,21 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         )
     ],
 )
+
+
+
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
-
-
+def post(self, request, *args, **kwargs):
+    serializer = self.get_serializer(data=request.data)
+    try:
+        serializer.is_valid(raise_exception=True)
+        return success_response(
+            data=serializer.validated_data,
+            message="Login successful"
+        )
+    except ValidationError as e:
+        return errorss__response(errors=e.detail)
 # -----------------------------
 # Custom Token Refresh
 # -----------------------------
@@ -111,6 +126,9 @@ class CustomTokenObtainPairView(TokenObtainPairView):
         )
     ]
 )
+
+
+        
 class CustomTokenRefreshView(TokenRefreshView):
     serializer_class = TokenRefreshSerializer
 
