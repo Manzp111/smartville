@@ -122,6 +122,7 @@ class LocationViewSet(viewsets.ReadOnlyModelViewSet):
                     cell=cell
                 ).values('village_id', 'village')
                 return success_response(
+                    
                     data={"villages": list(villages)},
                     message=f"Villages in {cell}, {sector} retrieved successfully"
                 )
@@ -138,47 +139,3 @@ class LocationViewSet(viewsets.ReadOnlyModelViewSet):
                 errors=str(e), 
                 status_code=400
             )
-
-    # @extend_schema(
-    #     summary="Search locations",
-    #     description="Search locations by any field with autocomplete support",
-    #     parameters=[
-    #         OpenApiParameter(name='q', description='Search query', required=True, type=OpenApiTypes.STR),
-    #     ],
-    #     responses={
-    #         200: OpenApiTypes.OBJECT,
-    #         400: OpenApiTypes.OBJECT
-    #     }
-    # )
-    # @action(detail=False, methods=['get'])
-    # def search(self, request):
-    #     """Search locations across all fields"""
-    #     try:
-    #         query = request.query_params.get('q', '').strip()
-    #         if not query or len(query) < 2:
-    #             return error_response(
-    #                 message="Search query too short", 
-    #                 errors="Query must be at least 2 characters long",
-    #                 status_code=400
-    #             )
-
-    #         locations = Location.objects.filter(
-    #             Q(province__icontains=query) |
-    #             Q(district__icontains=query) |
-    #             Q(sector__icontains=query) |
-    #             Q(cell__icontains=query) |
-    #             Q(village__icontains=query)
-    #         )[:10]  # Limit to 10 results
-
-    #         serializer = self.get_serializer(locations, many=True)
-    #         return success_response(
-    #             data=serializer.data,
-    #             message="Search results retrieved successfully"
-    #         )
-
-    #     except Exception as e:
-    #         return error_response(
-    #             message="Search failed", 
-    #             errors=str(e), 
-    #             status_code=400
-    #         )

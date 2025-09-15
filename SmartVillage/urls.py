@@ -12,6 +12,7 @@ urlpatterns = [
     path('',include('event.urls')),
     path('',include('Location.urls')),
     path('',include("Resident.urls")),
+    path('',include('villages.urls')),
     # path('',include("vistor.urls")),
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     # Optional UI:

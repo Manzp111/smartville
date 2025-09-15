@@ -50,7 +50,7 @@ from .serializers import EventSerializer,VillageEventsResponseSerializer
 class EventsByVillageAPIView(APIView):
 
     @extend_schema(
-        request=None,  # GET, no request body
+        request=None,  
         parameters=[
             OpenApiParameter(
                 name="village_id",
