@@ -11,30 +11,6 @@ from rest_framework_simplejwt.exceptions import AuthenticationFailed
 from rest_framework.exceptions import ValidationError
 from .jwt_serializers import CustomTokenObtainPairSerializer
 
-# class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
-#     def validate(self, attrs):
-#         data = super().validate(attrs)
-
-#         # Check if user is verified
-#         if not self.user.is_verified:
-#             raise serializers.ValidationError({
-                
-#                 "message": "Email not verified"
-#             })
-
-#         return {
-#             "status": "success",
-#             "message": "Login successful",
-#             "data": {
-#                 "access": data["access"],
-#                 "refresh": data["refresh"],
-#                 "user": {
-#                     "id": self.user.user_id,
-#                     "email": self.user.email,
-#                     "role": self.user.role
-#                 }
-#             }
-#         }
 
 @extend_schema(
     request=CustomTokenObtainPairSerializer,
