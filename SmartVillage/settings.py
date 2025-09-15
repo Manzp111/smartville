@@ -168,7 +168,6 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5174/",  
      "https://smartville.onrender.com", # Optional
 ]          # For development
-CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS_ALL=True
 
 # MEDIA
