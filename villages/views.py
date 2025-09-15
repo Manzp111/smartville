@@ -79,12 +79,15 @@ class VillageNewsAPIView(APIView):
 
         # Build response
         response_data = {
+
             "success": True,
             "message": f"all information of {village.village} retrived",
+            "data ": {
             "village": village_serializer.data,
             "total_residents": residents.count(),
             "total_events": events.count(),        
             "events": event_serializer.data,
+            }
         }
 
         return Response(response_data, status=status.HTTP_200_OK)
