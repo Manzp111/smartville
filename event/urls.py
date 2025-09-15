@@ -10,7 +10,7 @@ router.register(r'event', EventViewSet, basename='event')
 from .views import EventsByVillageAPIView
 
 urlpatterns = [
-     path("/event/village/<uuid:village_id>/events/", EventsByVillageAPIView.as_view(), name="village-events"),
+     path("village/<uuid:village_id>/events/", EventsByVillageAPIView.as_view(), name="village-events"),
     path("",include(router.urls)),
 
 ]

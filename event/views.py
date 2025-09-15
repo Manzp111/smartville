@@ -104,6 +104,8 @@ class EventsByVillageAPIView(APIView):
         event_serializer = EventSerializer(events, many=True)
 
         response_data = {
+            "success":True,
+            "message":f"event o {village.village} of retrived well",
             "village_id": str(village.village_id),
             "village": village.village,
             "events": event_serializer.data

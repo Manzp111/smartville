@@ -164,8 +164,8 @@ CELERY_TIMEZONE = "Africa/Kigali"
 
 # CORS SETTINGS
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173/",   # Vite frontend
-    "http://127.0.0.1:5174/",  
+    "http://localhost:5173",   # Vite frontend
+    "http://127.0.0.1:5174",  
      "https://smartville.onrender.com", # Optional
 ]          # For development
 CORS_ALLOWED_ORIGINS_ALL=True
