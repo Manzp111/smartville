@@ -39,5 +39,5 @@ class EventAttendanceSerializer(serializers.ModelSerializer):
     person = PersonSerializer(read_only=True)
     class Meta:
         model = EventAttendance
-        fields = ['id', 'event', 'person__id', 'joined_at']
+        fields = ['id', 'event', 'person', 'joined_at']
         read_only_fields = ['id', 'joined']
