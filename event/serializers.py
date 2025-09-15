@@ -55,3 +55,22 @@ class EventSerializer(serializers.ModelSerializer):
         if obj.image:
             return request.build_absolute_uri(obj.image.url) if request else obj.image.url
         return None
+
+
+
+
+
+
+class EventSerializer(serializers.ModelSerializer):
+    village = serializers.StringRelatedField()  
+
+    class Meta:
+        model = Event
+        fields = "__all__"
+
+class VillageEventsResponseSerializer(serializers.Serializer):
+    village_id = serializers.UUIDField()
+    village = serializers.CharField()
+    events = EventSerializer(many=True)
+
+
