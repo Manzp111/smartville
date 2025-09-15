@@ -27,7 +27,7 @@ class EventSerializer(serializers.ModelSerializer):
             "title",
             "description",
             "village",
-            "location",
+            "exact_place_of_village",
             "date",
             "start_time",
             "end_time",
