@@ -17,7 +17,7 @@ class Event(models.Model):
     event_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     title = models.CharField(max_length=255)
     description = models.TextField()
-    location = models.CharField(max_length=255)
+    exact_place_of_village= models.CharField(max_length=255)
     date = models.DateField()
     start_time = models.TimeField()
     end_time = models.TimeField()

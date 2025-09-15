@@ -9,6 +9,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.utils import timezone
 from pytz import timezone as pytz_timezone
 from event.utils import success_response, error_response  # Import the utils
+from rest_framework.exceptions import PermissionDenied, MethodNotAllowed
 
 from drf_spectacular.utils import extend_schema, OpenApiExample, OpenApiParameter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
@@ -224,7 +225,7 @@ class ResendOTPView(APIView):
 # Admin User Management ViewSet
 # -----------------------------
 class UserPagination(PageNumberPagination):
-    page_size = 10
+    page_size = 2
     page_size_query_param = 'page_size'
     max_page_size = 50
 
@@ -242,15 +243,15 @@ class AdminUserViewSet(viewsets.ModelViewSet):
 
     # ---------------- LIST ----------------
     @extend_schema(
-        parameters=[
-            OpenApiParameter("role", description="Filter by role", required=False, type=str),
-            OpenApiParameter("is_verified", description="Filter by verification status", required=False, type=bool),
-            OpenApiParameter("is_active", description="Filter by active status", required=False, type=bool),
-            OpenApiParameter("search", description="Search by email or name", required=False, type=str),
-            OpenApiParameter("ordering", description="Order by email, created_at, or role", required=False, type=str),
-            OpenApiParameter("page", description="Page number for pagination", required=False, type=int),
-            OpenApiParameter("page_size", description="Number of users per page", required=False, type=int),
-        ],
+        # parameters=[
+        #     OpenApiParameter("role", description="Filter by role", required=False, type=str),
+        #     OpenApiParameter("is_verified", description="Filter by verification status", required=False, type=bool),
+        #     OpenApiParameter("is_active", description="Filter by active status", required=False, type=bool),
+        #     OpenApiParameter("search", description="Search by email or name", required=False, type=str),
+        #     OpenApiParameter("ordering", description="Order by email, created_at, or role", required=False, type=str),
+        #     OpenApiParameter("page", description="Page number for pagination", required=False, type=int),
+        #     OpenApiParameter("page_size", description="Number of users per page", required=False, type=int),
+        # ],
         description="List all users with filtering, search, ordering, and pagination",
         summary="List users for admin only",
         examples=[
@@ -294,7 +295,9 @@ class AdminUserViewSet(viewsets.ModelViewSet):
     )
     def list(self, request, *args, **kwargs):
         response = super().list(request, *args, **kwargs)
+        
         return success_response(
+
             data=response.data,
             message="Users retrieved successfully"
         )
@@ -308,13 +311,13 @@ class AdminUserViewSet(viewsets.ModelViewSet):
             OpenApiExample(
                 'Create User Example',
                 value={
-                    "email": "newuser@example.com",
-                    "password": "SecurePass123!",
-                    "confirm_password": "SecurePass123!",
+                    "email": "gilbertnshimyimana4@gmail.com",
+                    "password": "Ng112233@",
+                    "confirm_password": "Ng112233@",
                     "role": "resident",
                     "person": {
-                        "first_name": "John",
-                        "last_name": "Doe",
+                        "first_name": "manzp",
+                        "last_name": "prience",
                         "location": {
                             "province": "Kigali",
                             "district": "Gasabo",
@@ -336,19 +339,19 @@ class AdminUserViewSet(viewsets.ModelViewSet):
                     "message": "User created successfully",
                     "data": {
                         "id": "d7b4c8e2-9f62-4f4e-a7b5-1234567890ab",
-                        "email": "newuser@example.com",
+                        "email": "gilbertnshimyimana4@gmail.com.com",
                         "role": "resident",
                         "is_verified": False,
                         "is_active": True,
                         "person": {
-                            "first_name": "John",
-                            "last_name": "Doe",
+                            "first_name": "manzp",
+                            "last_name": "prience",
                             "location": {
                                 "province": "Kigali",
                                 "district": "Gasabo",
                                 "sector": "Kimihurura",
-                                "cell": "Gisozi",
-                                "village": "Village"
+                                "cell": "Musezero",
+                                "village": "Amajyambere"
                             }
                         },
                         "created_at": "2025-09-10T08:00:00Z"
@@ -387,7 +390,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
                     "message": "User retrieved successfully",
                     "data": {
                         "user_id": "d7b4c8e2-9f62-4f4e-a7b5-1234567890ab",
-                        "email": "gilbertnshimyimana130@gmail.com",
+                        "email": "gilbertnshimyimana4@gmail.com",
                         "role": "resident",
                         "is_verified": True,
                         "is_active": True,
@@ -443,81 +446,12 @@ class AdminUserViewSet(viewsets.ModelViewSet):
         )
 
     # ---------------- UPDATE ----------------
-    @extend_schema(
-        description="Update a user's details by ID",
-        summary="Update user details for admin only",
-        request=UserListSerializer,
-        examples=[
-            OpenApiExample(
-                "User Update Example",
-                value={
-                    "email": "updateduser@example.com",
-                    "role": "leader",
-                    "is_active": False,
-                    "person": {
-                        "first_name": "Updated",
-                        "last_name": "Name",
-                        "location": {
-                            "province": "Updated Province",
-                            "district": "Updated District",
-                            "sector": "Updated Sector",
-                            "cell": "Updated Cell",
-                            "village": "Updated Village"
-                        }
-                    }
-                },
-                request_only=True,
-                summary="Example payload to update a user"
-            )
-        ],
-        responses={
-            200: OpenApiExample(
-                "User Updated",
-                value={
-                    "success": True,
-                    "message": "User updated successfully",
-                    "data": {
-                        "id": "d7b4c8e2-9f62-4f4e-a7b5-1234567890ab",
-                        "email": "updateduser@example.com",
-                        "role": "leader",
-                        "is_verified": True,
-                        "is_active": False,
-                        "person": {
-                            "first_name": "Updated",
-                            "last_name": "Name",
-                            "location": {
-                                "province": "Updated Province",
-                                "district": "Updated District",
-                                "sector": "Updated Sector",
-                                "cell": "Updated Cell",
-                                "village": "Updated Village"
-                            }
-                        },
-                        "updated_at": "2025-09-10T12:00:00Z"
-                    }
-                },
-                response_only=True,
-                summary="Example response after updating a user"
-            )
-        }
-    )
+   
+
+    @extend_schema(exclude=True)
     def update(self, request, *args, **kwargs):
-        partial = kwargs.pop('partial', False)
-        instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=partial)
-        
-        if serializer.is_valid():
-            serializer.save()
-            return success_response(
-                data=serializer.data,
-                message="User updated successfully"
-            )
-        
-        return error_response(
-            message="User update failed",
-            errors=serializer.errors,
-            status_code=status.HTTP_400_BAD_REQUEST
-        )
+        raise MethodNotAllowed("PUT", detail="Updating events is disabled.")
+    
     
     # ---------------- PARTIAL UPDATE ----------------
     @extend_schema(
