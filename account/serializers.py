@@ -7,6 +7,7 @@ from .utils import generate_otp
 from .tasks import send_verification_email_task
 from django.utils import timezone
 from pytz import timezone as pytz_timezone
+from event.utils import success_response,error_response
 
 
 # -----------------------------
@@ -184,6 +185,6 @@ class ResendOTPSerializer(serializers.Serializer):
 
         return {
             "success": True,
-            "message": "A new OTP has been sent to your email.",
+            "message": f"A new OTP has been sent to your {user.email}",
             "data": {"email": user.email}
         }

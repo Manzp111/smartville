@@ -1,74 +1,64 @@
-# account/serializers.py
+# serializers.py
 from rest_framework import serializers
-from .models import Resident
-from Location.models import Location
-from account.models import Person
-
-class LocationSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Location
-        fields = ['id', 'province', 'district', 'sector', 'cell', 'village']
+from .models import Resident, Location
+from Location.serializers import LocationSerializer
+from account.models import Person, User
 
 
 class PersonSerializer(serializers.ModelSerializer):
     class Meta:
         model = Person
-        fields = ['person_id', 'first_name', 'last_name', 'national_id', 'phone_number', 'gender']
+        fields = ["person_id","first_name", "last_name", "phone_number","national_id","gender","person_type","registration_date"]
+    def get_full_name(self, obj):
+        return f"{obj.first_name} {obj.last_name}"
 
+
+class UserSerilaizer(serializers.ModelSerializer):
+    person=PersonSerializer(read_only=True)
+    class Meta:
+        model = User
+        fields = ["user_id","person"]
 
 class ResidentSerializer(serializers.ModelSerializer):
     person = PersonSerializer()
-    # Make location required on write, read_only is False now
-    location = LocationSerializer() 
+    location=LocationSerializer(read_only=True)
+    added_by = UserSerilaizer(read_only=True)
+    added_by_email = serializers.ReadOnlyField(source="added_by.email")
+    person_name = serializers.ReadOnlyField(source="person.full_name")
+    location_name = serializers.ReadOnlyField(source="location.village")
+    # status = serializers.ChoiceField(choices=STATUS_CHOICES, required=False)
+
 
     class Meta:
         model = Resident
-        fields = ['resident_id', 'person', 'location', 'added_by', 'has_account', 'is_deleted']
-        read_only_fields = ['added_by', 'resident_id', 'has_account', 'is_deleted']  # These are set by the system
+        fields = [
+            "resident_id",
+            "person",
+            "person_name",
+            "location",
+            "location_name",
+            "status",
+            "has_account",
+            "added_by",
+            "added_by_email",
+            "is_deleted",
+            "deleted_at",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["added_by", "added_by_email", "status", "is_deleted", "deleted_at", "created_at", "updated_at"]
+        def create(self, validated_data):
+            person_data = validated_data.pop('person')
+            person = Person.objects.create(**person_data)
+            location = self.context.get('location')
+            user = self.context.get('user')
+            return Resident.objects.create(person=person, location=location, added_by=user, **validated_data)
+                
 
-    def create(self, validated_data):
-        """
-        Custom create method to handle nested Person and Location objects.
-        """
-        # Extract nested data
-        person_data = validated_data.pop('person')
-        location_data = validated_data.pop('location')
 
-        # 1. Get or Create Location? Or just create? Assuming creation for MVP.
-        # For a robust solution, you might want to find an existing location.
-        location, _ = Location.objects.get_or_create(**location_data)
+class ResidentStatusSerializer(serializers.ModelSerializer):
+    """Only used by leaders/admin to update status"""
+    class Meta:
+        model = Resident
+        fields = ["status"]
 
-        # 2. Create the Person
-        person = Person.objects.create(**person_data)
-
-        # 3. Get the user from the context (set by the View)
-        user = self.context['request'].user
-
-        # 4. Finally, create the Resident
-        resident = Resident.objects.create(
-            person=person,
-            location=location,
-            added_by=user,  # Set the user who is adding this resident
-            **validated_data
-        )
-        return resident
-
-    def update(self, instance, validated_data):
-        """
-        Custom update method to handle nested Person and Location updates.
-        """
-        person_data = validated_data.pop('person', None)
-        location_data = validated_data.pop('location', None)
-
-        # Update Location if provided
-        if location_data:
-            location_serializer = self.fields['location']
-            location_serializer.update(instance.location, location_data)
-
-        # Update Person if provided
-        if person_data:
-            person_serializer = self.fields['person']
-            person_serializer.update(instance.person, person_data)
-
-        # Update the resident instance itself
-        return super().update(instance, validated_data)

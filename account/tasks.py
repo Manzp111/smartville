@@ -7,6 +7,7 @@ from django.conf import settings
 
 @shared_task(bind=True, max_retries=3)
 def send_verification_email_task(self, first_name, last_name, email, otp_code):
+    
     subject = "Verify your email"
     message = f"Hello {last_name}-{first_name},\n\nUse the following OTP to verify your email: {otp_code}\n\nThis OTP expires in 30 minutes."
     from_email = settings.DEFAULT_FROM_EMAIL

@@ -8,7 +8,9 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         try:
             sf = shapefile.Reader(r"Village level boundary\RWA_adm5.shp")
-            for record in sf.records():
+            records=sf.records()
+            start_id=0
+            for i,record in enumerate(records[start_id:],start=start_id):
                 location, created = Location.objects.get_or_create(
                     province=record['NAME_1'],
                     district=record['NAME_2'],

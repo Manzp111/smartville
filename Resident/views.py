@@ -1,166 +1,542 @@
-# account/views.py
-from rest_framework import viewsets, status
-from rest_framework.permissions import IsAuthenticated
-from .models import Resident
-from .serializers import ResidentSerializer
-from Location.models import Location
-from .serializers import LocationSerializer
+# views.py
+from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
-
-# Import the new utility functions
-from event.utils import success_response, error_response
-
-from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiExample
+from rest_framework.response import Response
+# from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample, OpenApiParameter
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiResponse, OpenApiExample, OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
+from django_filters.rest_framework import DjangoFilterBackend
+from django.utils import timezone
+
+from .models import Resident, Location
+from .serializers import ResidentSerializer, ResidentStatusSerializer
+from account.permisions import IsAdminUser, IsLeaderOrAdmin, IsVerifiedUser
+from .tasks import notify_village_leader_new_resident
+from event.utils import success_response, error_response
+from .mixins import VillageRolePermissionMixin
+from django_filters.rest_framework import DjangoFilterBackend
+from .response import errorss__response
+from django.db import transaction
+from django.utils import timezone
+from .tasks import notify_village_leaders_of_migration
 
 @extend_schema_view(
     list=extend_schema(
-        summary="List all available locations",
-        description="Retrieve a paginated list of all provinces, districts, sectors, cells, and villages. Use the `filter_by/` endpoint to narrow down the list hierarchically.",
+        summary="List all residents",
+        request=ResidentSerializer,
+        description="""Retrieve a paginated list of residents based on user permissions:
+        - **Admins**: See all residents
+        - **Leaders**: See residents in their assigned location
+        - **Regular Users**: See only their own resident record
+        
+        Supports filtering, searching, and ordering.""",
+
         responses={
-            200: OpenApiTypes.OBJECT, # You can create a more specific response schema if needed
+            200: OpenApiResponse(response=ResidentSerializer(many=True), description="Residents retrieved successfully"),
+            403: OpenApiResponse(description="Forbidden - User not authorized"),
+            500: OpenApiResponse(description="Internal server error")
         }
     ),
     retrieve=extend_schema(
-        summary="Retrieve a specific location",
-        description="Get the detailed information of a single location by its ID.",
+        summary="Retrieve a specific resident",
+        description="Get detailed information about a single resident by ID. User must have permission to access this resident.",
         responses={
-            200: LocationSerializer,
-            404: OpenApiTypes.OBJECT
+            200: OpenApiResponse(response=ResidentSerializer, description="Resident retrieved successfully"),
+            403: OpenApiResponse(description="Forbidden - User not authorized to view this resident"),
+            404: OpenApiResponse(description="Resident not found")
+        }
+    ),
+    create=extend_schema(
+        summary="add a new resident for admin and leader eg like children",
+        description="""Create a new resident record. This endpoint is typically used by admins/leaders to register new residents.
+        For users joining villages, use the join_village endpoint instead.""",
+        request=ResidentSerializer,
+        responses={
+            201: OpenApiResponse(response=ResidentSerializer, description="Resident created successfully"),
+            400: OpenApiResponse(description="Validation error - Invalid input data"),
+            403: OpenApiResponse(description="Forbidden - User not authorized to create residents")
+        },
+        examples=[
+            OpenApiExample(
+                "Resident Example",
+                value={
+                                        
+                    "person": {
+                        "first_name": "Gilbert",
+                        "last_name": "Nshimyimana",
+                        "national_id": None,
+                        "phone_number": "0788730366",
+                        "gender": "male",
+                        "person_type": "resident"
+                    }
+}
+
+                
+            )
+        ],
+    ),
+    update=extend_schema(  exclude=True  
+    
+    ),
+    partial_update=extend_schema(
+        summary="Partially update a resident",
+        description="Partially update a resident record. User must have permission to modify this resident.",
+        request=ResidentSerializer,
+        responses={
+            200: OpenApiResponse(response=ResidentSerializer, description="Resident partially updated successfully"),
+            400: OpenApiResponse(description="Validation error - Invalid input data"),
+            403: OpenApiResponse(description="Forbidden - User not authorized to update this resident"),
+            404: OpenApiResponse(description="Resident not found")
+        }
+    ),
+    destroy=extend_schema(
+        summary="Permanently delete a resident",
+        description="""**WARNING**: Permanently delete a resident record from the database. 
+        This action is irreversible. For safe deletion, use the soft_delete endpoint instead.
+        Only available to admin users.""",
+        responses={
+            204: OpenApiResponse(description="Resident permanently deleted successfully"),
+            403: OpenApiResponse(description="Forbidden - Only admin users can permanently delete"),
+            404: OpenApiResponse(description="Resident not found")
         }
     )
 )
-class LocationViewSet(viewsets.ReadOnlyModelViewSet):
+class ResidentViewSet(VillageRolePermissionMixin,viewsets.ModelViewSet):
     """
-    A simple ViewSet for viewing locations (Provinces, Districts, Sectors, Cells, Villages).
-    Supports hierarchical filtering via the `filter_by` action.
+    ViewSet for managing Resident records with role-based access control.
+    
+    Provides endpoints for creating, retrieving, updating, and deleting residents
+    with appropriate permissions for different user roles.
     """
-    queryset = Location.objects.all()
-    serializer_class = LocationSerializer
-
-    def list(self, request, *args, **kwargs):
-        """Override the list method to use consistent response"""
-        try:
-            queryset = self.filter_queryset(self.get_queryset())
-            page = self.paginate_queryset(queryset)
-            if page is not None:
-                serializer = self.get_serializer(page, many=True)
-                return self.get_paginated_response(serializer.data)
-
-            serializer = self.get_serializer(queryset, many=True)
-            return success_response(data=serializer.data, message="Locations retrieved successfully")
-        except Exception as e:
-            return error_response(message="Failed to retrieve locations", errors=str(e), status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    def retrieve(self, request, *args, **kwargs):
-        """Override the retrieve method to use consistent response"""
-        try:
-            instance = self.get_object()
-            serializer = self.get_serializer(instance)
-            return success_response(data=serializer.data, message="Location retrieved successfully")
-        except Exception as e:
-            return error_response(message="Location not found", errors=str(e), status_code=status.HTTP_404_NOT_FOUND)
-
-    @extend_schema(
-        # ... [Your existing @extend_schema details remain the same] ...
-    )
-    @action(detail=False, methods=['get'])
-    def filter_by(self, request):
-        """Use consistent response for the custom action"""
-        try:
-            params = request.query_params
-            queryset = self.get_queryset()
-            for field in ['province', 'district', 'sector', 'cell']:
-                if field in params:
-                    queryset = queryset.filter(**{field: params[field]})
-            serializer = self.get_serializer(queryset, many=True)
-            return success_response(data=serializer.data, message="Locations filtered successfully")
-        except Exception as e:
-            return error_response(message="Filtering failed", errors=str(e), status_code=status.HTTP_400_BAD_REQUEST)
-
-
-@extend_schema_view(
-    list=extend_schema(
-        summary="List residents added by the current user",
-        description="Retrieves a list of all residents that the currently authenticated user has added to the system, including themselves.",
-        responses={200: ResidentSerializer(many=True)}
-    ),
-    create=extend_schema(
-        summary="Register a new resident",
-        description="Creates a new Resident and linked Person record. The current user is automatically set as the `added_by` field.",
-        request=ResidentSerializer,
-        responses={201: ResidentSerializer}
-    ),
-    # ... [Other @extend_schema definitions] ...
-)
-class ResidentViewSet(viewsets.ModelViewSet):
-    """
-    ViewSet for managing Residents. Users can only see and manage residents they have added.
-    """
-    queryset = Resident.objects.all()
+    queryset = Resident.objects.filter(is_deleted=False)
     serializer_class = ResidentSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsVerifiedUser]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ["status","person__first_name","created_at"]
+    search_fields = ["person__full_name"]
+    ordering_fields = ["created_at", "updated_at"]
+    ordering = ["-created_at"]
 
     def get_queryset(self):
         user = self.request.user
-        return Resident.objects.filter(added_by=user) | Resident.objects.filter(person=user.person)
+        if user.role == "admin":
+            return Resident.objects.filter(is_deleted=False)
+        elif user.role == "leader":
+            return Resident.objects.filter(is_deleted=False, location__leader=user)
+        else:
+            return Resident.objects.filter(is_deleted=False, person=user.person)
 
-    def list(self, request, *args, **kwargs):
-        """Consistent response for listing residents"""
+# Resident/views.py
+    @extend_schema(
+        summary="Join a village community",
+        description="""Allows verified users to join a specific village community by providing location details.
+        The system will find or create the location and create a resident record with PENDING status.""",
+        request=OpenApiTypes.OBJECT,
+        examples=[
+            OpenApiExample(
+                "Join Request Example",
+                summary="Example request to join a village",
+                value={
+                    "province": "Amajyaruguru",
+                    "district": "Burera", 
+                    "sector": "Kinyababa",
+                    "cell": "Bugamba",
+                    "village": "Kirwa"
+                },
+                request_only=True
+            )
+        ],
+        responses={
+            201: OpenApiResponse(
+                response=ResidentSerializer,
+                description="Join request submitted successfully",
+                examples=[
+                    OpenApiExample(
+                        "Success Response",
+                        summary="Successful join request",
+                        value={
+                            "status": "success",
+                            "message": "Joined village successfully",
+                            "data": {
+                                "id": 1,
+                                "status": "PENDING",
+                                "person": {"id": 1, "full_name": "John Doe"},
+                                "location": {
+                                    "village_id": "uuid-123",
+                                    "province": "Amajyaruguru",
+                                    "district": "Burera",
+                                    "sector": "Kinyababa", 
+                                    "cell": "Bugamba",
+                                    "village": "Kirwa"
+                                }
+                            }
+                        },
+                        response_only=True
+                    )
+                ]
+            ),
+            400: OpenApiResponse(description="Validation error - Missing location data"),
+            409: OpenApiResponse(description="Conflict - Already a resident of this village")
+        }
+    )
+    @action(detail=False, methods=["post"], permission_classes=[IsVerifiedUser])
+    def join_village(self, request):
+        user = request.user
+        person = getattr(user, "person", None)
+        
+        if not person:
+            return error_response("No person record for the user", status_code=400)
+        
+        # Extract location data from request
+        location_data = request.data
+        required_fields = ['province', 'district', 'sector', 'cell', 'village']
+        
+        # Validate required fields
+        missing_fields = [field for field in required_fields if not location_data.get(field)]
+        if missing_fields:
+            return error_response(
+                f"Missing required location fields: {', '.join(missing_fields)}",
+                status_code=400
+            )
+        
+        # Find or create the location
         try:
-            queryset = self.filter_queryset(self.get_queryset())
-            page = self.paginate_queryset(queryset)
-            if page is not None:
-                serializer = self.get_serializer(page, many=True)
-                return self.get_paginated_response(serializer.data)
-
-            serializer = self.get_serializer(queryset, many=True)
-            return success_response(data=serializer.data, message="Residents retrieved successfully")
+            location, created = Location.objects.get_or_create(
+                province=location_data['province'],
+                district=location_data['district'],
+                sector=location_data['sector'],
+                cell=location_data['cell'],
+                village=location_data['village'],
+                defaults={
+                    # You can set default values if creating new location
+                    'leader': None  # or set a default leader if needed
+                }
+            )
         except Exception as e:
-            return error_response(message="Failed to retrieve residents", errors=str(e), status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return error_response(f"Error creating/finding location: {str(e)}", status_code=400)
+        
+        # # Check if user is already a resident of this location
+        # if Resident.objects.filter(person=person, location=location, is_deleted=False).exists():
+        #     return error_response("Already a resident of this village", status_code=409)
+        
+        # Create resident record with PENDING status
+        existing_resident = Resident.objects.filter(person=person, is_deleted=False).first()
+        if existing_resident:
+           return error_response(
+                     f"You are already a resident in {existing_resident.location.village} village in {existing_resident.location.sector} sector",
+                      status_code=409
+                )
+        resident = Resident.objects.create(
+            person=person,
+            location=location,
+            added_by=user,
+            status='PENDING'  # Assuming you have a status field
+        )
+        
+        # Notify village leader if one exists
+        if location.leader:
+            notify_village_leader_new_resident.delay(
+                location.leader.email,
+                f"{person.first_name} {person.last_name}",
+                location.village,
+                location.get_full_address()  # Assuming you have a method for this
+            )
+        
+        serializer = self.get_serializer(resident)
+        return success_response(
+            serializer.data, 
+            "Join request submitted successfully. Waiting for leader approval.", 
+            status_code=201
+        )
+    @extend_schema(
+        summary="Approve or reject resident status",
+        description="""Allows village leaders and admins to approve or reject resident join requests.
+        
+        **Available Status Values:**
+        - APPROVED: Resident is officially accepted into the village
+        - REJECTED: Resident's join request is denied
+        - PENDING: Initial status (default)
+        
+        **Permissions:** Village leaders (for their village) and admins only""",
+        request=ResidentStatusSerializer,
+        examples=[
+            OpenApiExample(
+                "Approve Request",
+                summary="Example to approve a resident",
+                value={"status": "APPROVED"},
+                request_only=True
+            ),
+            OpenApiExample(
+                "Reject Request", 
+                summary="Example to reject a resident",
+                value={"status": "REJECTED"},
+                request_only=True
+            )
+        ],
+        responses={
+            200: OpenApiResponse(
+                response=ResidentSerializer,
+                description="Status updated successfully",
+                examples=[
+                    OpenApiExample(
+                        "Approval Success",
+                        value={
+                            "status": "success",
+                            "message": "Resident status updated",
+                            "data": {
+                                "id": 1,
+                                "status": "APPROVED",
+                                "person": {"id": 1, "full_name": "John Doe"},
+                                "location": {"id": 123, "village": "Village A"}
+                            }
+                        }
+                    )
+                ]
+            ),
+            400: OpenApiResponse(description="Validation error - Invalid status value"),
+            403: OpenApiResponse(description="Forbidden - User not authorized to update status"),
+            404: OpenApiResponse(description="Resident not found")
+        }
+    )
+    @action(detail=True, methods=["patch"], permission_classes=[IsLeaderOrAdmin], serializer_class=ResidentStatusSerializer)
+    def update_status(self, request):
+        resident_ids = request.data.get("resident_ids", [])
+        new_status = request.data.get("status")
+        if not resident_ids or not new_status:
+            return error_response("resident_ids and status are required", 400)
+        queryset = Resident.objects.filter(id__in=resident_ids, is_deleted=False)
+        if not queryset.exists():
+            return error_response("No valid residents found to update", 404)
+        queryset.update(status=new_status)
 
+        serializer = self.get_serializer(queryset, many=True)
+        return success_response(serializer.data, f"Updated status of {queryset.count()} residents")
+
+        # resident = self.get_object()
+        # serializer = ResidentStatusSerializer(resident, data=request.data, partial=True)
+        # serializer.is_valid(raise_exception=True)
+        # serializer.save()
+        # return success_response(self.get_serializer(resident).data, "Resident status updated")
+
+    # --------------------- Soft Delete ---------------------
+    @extend_schema(
+        summary="Soft delete a resident",
+        description="""Marks a resident as deleted without permanently removing the record.
+        
+        **Features:**
+        - Sets is_deleted flag to True
+        - Record remains in database for audit purposes
+        - Can be restored using the restore endpoint
+        - Doesn't affect related person/location records
+        
+        **Permissions:** Village leaders (for their village) and admins only""",
+        responses={
+            200: OpenApiResponse(
+                description="Resident soft deleted successfully",
+                examples=[
+                    OpenApiExample(
+                        "Soft Delete Success",
+                        value={
+                            "status": "success", 
+                            "message": "Resident soft deleted successfully",
+                            "data": None
+                        }
+                    )
+                ]
+            ),
+            403: OpenApiResponse(description="Forbidden - User not authorized to delete"),
+            404: OpenApiResponse(description="Resident not found")
+        }
+    )
+    @action(detail=True, methods=["delete"], permission_classes=[IsLeaderOrAdmin])
+
+
+    def soft_delete(self, request, pk=None):
+        resident = self.get_object()
+        resident.soft_delete()
+        return success_response(message="Resident soft deleted successfully")
+
+    # --------------------- Restore Soft-Deleted Resident ---------------------
+    @extend_schema(
+        summary="Restore a soft-deleted resident",
+        description="""Restores a previously soft-deleted resident record.
+        
+        **Features:**
+        - Sets is_deleted flag back to False
+        - Restores resident to active status
+        - Maintains all original data and relationships
+        
+        **Permissions:** Village leaders (for their village) and admins only""",
+        responses={
+            200: OpenApiResponse(
+                response=ResidentSerializer,
+                description="Resident restored successfully",
+                examples=[
+                    OpenApiExample(
+                        "Restore Success",
+                        value={
+                            "status": "success",
+                            "message": "Resident restored successfully",
+                            "data": {
+                                "id": 1,
+                                "status": "APPROVED",
+                                "is_deleted": False,
+                                "person": {"id": 1, "full_name": "John Doe"},
+                                "location": {"id": 123, "village": "Village A"}
+                            }
+                        }
+                    )
+                ]
+            ),
+            403: OpenApiResponse(description="Forbidden - User not authorized to restore"),
+            404: OpenApiResponse(description="Resident not found")
+        }
+    )
+    @action(detail=True, methods=["post"], permission_classes=[IsLeaderOrAdmin])
+    def restore(self, request, pk=None):
+        resident = self.get_object()
+        resident.restore()
+        return success_response(self.get_serializer(resident).data, "Resident restored successfully")
+
+    # --------------------- Override default methods for consistent responses ---------------------
+    # @extend_schema(
+    #     summary="List tttttttttttttttttttt residents",
+    #     description="Retrieve all residents the user has access to. Supports search, filtering, and pagination.",
+    #     parameters=[
+    #         OpenApiParameter(name='page', description='Page number', required=False, type=OpenApiTypes.INT),
+    #         OpenApiParameter(name='page_size', description='Number of items per page', required=False, type=OpenApiTypes.INT),
+    #     ],
+    #     responses={
+    #         200: OpenApiResponse(response=ResidentSerializer(many=True), description="Residents retrieved successfully"),
+    #         403: OpenApiResponse(description="Forbidden - User not authorized"),
+    #         500: OpenApiResponse(description="Internal server error")
+    #     }
+    # )
+    # def list(self, request, *args, **kwargs):
+    #     queryset = self.filter_queryset(self.get_queryset())
+    #     page = self.paginate_queryset(queryset)
+    #     if page is not None:
+    #         serializer = self.get_serializer(page, many=True)
+    #         return self.get_paginated_response(serializer.data)
+    #     serializer = self.get_serializer(queryset, many=True)
+    #     return success_response(serializer.data, "Residents retrieved successfully")
+
+    @extend_schema(
+            summary="delete for admin"
+            
+            )  
+    def destroy(self, request, *args, **kwargs):
+        """Permanent delete - only for admin use"""
+        return super().destroy(request, *args, **kwargs)
+    
     def create(self, request, *args, **kwargs):
-        """Consistent response for creating a resident"""
-        try:
-            serializer = self.get_serializer(data=request.data)
-            serializer.is_valid(raise_exception=True)
+        serializer = self.get_serializer(data=request.data, context={'user': request.user})
+        if serializer.is_valid():
             self.perform_create(serializer)
-            headers = self.get_success_headers(serializer.data)
             return success_response(
                 data=serializer.data, 
-                message="Resident registered successfully", 
-                status_code=status.HTTP_201_CREATED
+                message="Resident created successfully", 
+                status_code=201
             )
-        except serializers.ValidationError as e:
-            # Catch validation errors and format them nicely
-            return error_response(
-                message="Validation failed", 
-                errors=e.detail, 
-                status_code=status.HTTP_400_BAD_REQUEST
+        return errorss__response(
+        
+         errors=serializer.errors,
+      status_code=status.HTTP_400_BAD_REQUEST
+      )
+    # resident/views.py
+
+
+    @extend_schema(
+        summary="Migrate resident to a new village",
+        examples=[
+            OpenApiExample(
+                "Migration Example",
+                value={
+                    "province": "Amajyaruguru",
+                    "district": "Burera",
+                    "sector": "Kinyababa",
+                    "cell": "Bugamba",
+                    "village": "Kirwa"
+                },
+                summary="Example migration data"
             )
-        except Exception as e:
+        ]
+    )
+
+    @action(detail=False, methods=["post"])
+
+
+
+
+
+    def migrate_village(self, request):
+        """
+        Moves a resident to a new village. Soft deletes the old Resident record and creates a new one.
+        Only allows migration if the new location exists in the database.
+        Notifies old and new village leaders asynchronously.
+        """
+        user = request.user
+        person = getattr(user, "person", None)
+        if not person:
+            return error_response("No person record found for this user.", status_code=400)
+
+        # Validate required location fields
+        location_data = request.data
+        required_fields = ["province", "district", "sector", "cell", "village"]
+        missing_fields = [f for f in required_fields if not location_data.get(f)]
+        if missing_fields:
             return error_response(
-                message="Failed to create resident", 
-                errors=str(e), 
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+                f"Missing required location fields: {', '.join(missing_fields)}",
+                status_code=400
             )
 
-    def retrieve(self, request, *args, **kwargs):
-        """Consistent response for retrieving a single resident"""
+        # Match the location exactly with existing DB records
         try:
-            instance = self.get_object()
-            serializer = self.get_serializer(instance)
-            return success_response(data=serializer.data, message="Resident retrieved successfully")
-        except Exception as e:
-            return error_response(message="Resident not found", errors=str(e), status_code=status.HTTP_404_NOT_FOUND)
+            new_location = Location.objects.get(
+                province=location_data["province"],
+                district=location_data["district"],
+                sector=location_data["sector"],
+                cell=location_data["cell"],
+                village=location_data["village"]
+            )
+        except Location.DoesNotExist:
+            return error_response(
+                "The specified village does not exist in the system. Please check the location data.",
+                status_code=404
+            )
 
-    # You can similarly override update, partial_update, and destroy methods
-    def destroy(self, request, *args, **kwargs):
-        """Consistent response for deleting (soft delete) a resident"""
         try:
-            instance = self.get_object()
-            instance.is_deleted = True  # Assuming a soft delete
-            instance.save()
-            return success_response(message="Resident deleted successfully", status_code=status.HTTP_200_OK)
+            with transaction.atomic():
+                # Soft delete old resident if exists
+                old_resident = Resident.objects.filter(person=person, is_deleted=False).first()
+                old_location_id = None
+                if old_resident:
+                    old_resident.is_deleted = True
+                    old_resident.deleted_at = timezone.now()
+                    old_resident.save()
+                    old_location_id = old_resident.location.village_id
+
+                # Create new resident record
+                new_resident = Resident.objects.create(
+                    person=person,
+                    location=new_location,
+                    added_by=user,
+                    status="PENDING"
+                )
+
+                # Send background notifications to leaders
+                notify_village_leaders_of_migration.delay(
+                    resident_name=f"{person.first_name} {person.last_name}",
+                    old_location_id=old_location_id,
+                    new_location_id=new_location.village_id
+                )
+
         except Exception as e:
-            return error_response(message="Failed to delete resident", errors=str(e), status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return error_response(f"Error migrating resident: {str(e)}", status_code=500)
+
+        serializer = ResidentSerializer(new_resident)
+        return success_response(
+            serializer.data,
+            "Resident migrated successfully to new village.",
+            status_code=201
+        )

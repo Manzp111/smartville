@@ -4,12 +4,20 @@ from Location.models import Location
 import uuid
 from django.utils import timezone
 
+
+STATUS_CHOICES = [
+    ("PENDING", "Pending Approval"),
+    ("APPROVED", "Approved"),
+    ("REJECTED", "Rejected"),
+]
+
 class Resident(models.Model):
     resident_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     person = models.ForeignKey(Person, on_delete=models.CASCADE, related_name="residencies")
     location = models.ForeignKey(Location, on_delete=models.CASCADE, related_name="residents")
     has_account = models.BooleanField(default=True)
     added_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="added_residents")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="PENDING")
     
     # Soft delete fields
     is_deleted = models.BooleanField(default=False)
