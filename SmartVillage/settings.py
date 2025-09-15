@@ -4,6 +4,7 @@ import dj_database_url
 import os
 import sys
 from datetime import timedelta
+from corsheaders.defaults import default_headers  # Added for CORS
 
 # BASE DIR
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -22,7 +23,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-     "rest_framework",
+    "rest_framework",
     "rest_framework_simplejwt",
 
     # Third-party
@@ -37,14 +38,14 @@ INSTALLED_APPS = [
     'event',
     'Resident',
     'vistor',
-
 ]
 
+# MIDDLEWARE (CorsMiddleware moved near top)
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',  
     'django.middleware.security.SecurityMiddleware',
-     "whitenoise.middleware.WhiteNoiseMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -71,20 +72,8 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'SmartVillage.wsgi.application'
 
-
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-# }
-# databas_url=config("DATABASE_URL")
-
-# DATABASES["default"]=dj_database_url.parse(databas_url,conn_max_age=600)
-
-
+# DATABASE
 DATABASE_URL = config("DATABASE_URL")  # Get URL from environment variable
-
 if not DATABASE_URL:
     raise Exception("DATABASE_URL environment variable not set")
 
@@ -112,7 +101,6 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'   # Where collectstatic will collect file
 STATICFILES_DIRS = [BASE_DIR / 'static']  # Optional extra static dirs
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
-
 # DEFAULT PRIMARY KEY
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -131,7 +119,6 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
          "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
-    # "EXCEPTION_HANDLER": "account.utils.custom_exception_handler",
     "EXCEPTION_HANDLER": "event.exception_handler.custom_exception_handler",
     'DEFAULT_FILTER_BACKENDS': (
         'django_filters.rest_framework.DjangoFilterBackend',
@@ -139,17 +126,15 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'event.pagination.CustomPagination',
     'PAGE_SIZE': 10,
 }
+
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),   # short-lived
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),     # long-lived
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
     'USER_ID_FIELD': 'user_id',  
     'USER_ID_CLAIM': 'user_id',
 }
-
-
-
 
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Smart Village',
@@ -177,9 +162,16 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = "Africa/Kigali"
 
-# CORS
-CORS_ALLOWED_ORIGINS = [origin for origin in config('CORS_ALLOWED_ORIGINS', default='').split(',') if origin]
+# CORS SETTINGS
+CORS_ALLOWED_ORIGINS =[
+    "https://localhost:5173","https://localhost:5174",
+    "https://smartville.onrender.com",
+]            # For development
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    "Authorization",                     # Allow JWT header
+]
 
+# MEDIA
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
-
