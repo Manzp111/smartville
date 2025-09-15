@@ -163,10 +163,10 @@ CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = "Africa/Kigali"
 
 # CORS SETTINGS
-CORS_ALLOWED_ORIGINS =[
-    "https://localhost:5173","https://localhost:5174",
-    "https://smartville.onrender.com",
-]            # For development
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",   # Vite frontend
+    "http://127.0.0.1:5174",   # Optional
+]          # For development
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = list(default_headers) + [
     "Authorization",                     # Allow JWT header
