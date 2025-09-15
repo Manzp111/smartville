@@ -11,7 +11,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY
 SECRET_KEY = config('SECRET_KEY')
-DEBUG = config('DEBUG', default=False, cast=bool)
+DEBUG = config('DEBUG', 'False')=='True'
 ALLOWED_HOSTS = ["*"]
 
 # APPLICATIONS
@@ -168,10 +168,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5174/",  
      "https://smartville.onrender.com", # Optional
 ]          # For development
-CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_HEADERS = list(default_headers) + [
-    "Authorization",                     # Allow JWT header
-]
+CORS_ALLOWED_ORIGINS_ALL=True
 
 # MEDIA
 MEDIA_URL = '/media/'
