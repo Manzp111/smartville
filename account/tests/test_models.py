@@ -4,8 +4,8 @@ from account.models import User, Person, Location
 class UserModelTest(TestCase):
 
     def setUp(self):
-        # Create a location
-        self.location = Location.objects.create(
+        # Create a Location
+        self.Location = Location.objects.create(
             province="Kigali",
             district="Gasabo",
             sector="Kacyiru",
@@ -18,7 +18,7 @@ class UserModelTest(TestCase):
             national_id=123456789,
             first_name="John",
             last_name="Doe",
-            location=self.location,
+            Location=self.Location,
             date_of_birth="1990-01-01",
             gender="male",
             person_type="resident",
@@ -65,7 +65,7 @@ class UserModelTest(TestCase):
             person=self.person,
             username="struser"
         )
-        self.assertEqual(str(user), f"{self.person.first_name}-{self.person.location.village}_{user.role}")
+        self.assertEqual(str(user), f"{self.person.first_name}-{self.person.Location.village}_{user.role}")
 
     def test_str_method_superuser_without_person(self):
         superuser = User.objects.create_superuser(

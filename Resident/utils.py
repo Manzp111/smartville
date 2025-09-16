@@ -8,6 +8,6 @@ def get_resident_location(user):
     """
     try:
         resident = Resident.objects.get(person=user.person, has_account=True, is_deleted=False)
-        return resident.location
+        return resident.Location
     except Resident.DoesNotExist:
         return None

@@ -17,7 +17,7 @@ class RegisterViewTest(APITestCase):
             "confirm_password": "StrongPass1!",
             "person": {
                 "national_id": 1234567890123456,
-                "location": {
+                "Location": {
                     "province": "Kigali",
                     "district": "Gasabo",
                     "sector": "Kacyiru",
@@ -38,7 +38,7 @@ class RegisterViewTest(APITestCase):
             "confirm_password": "WrongPass1!",
             "person": {
                 "national_id": 1234567890123457,
-                "location": {
+                "Location": {
                     "province": "Kigali",
                     "district": "Gasabo",
                     "sector": "Kacyiru",
@@ -53,10 +53,10 @@ class RegisterViewTest(APITestCase):
 
     def test_register_user_existing_email(self):
         # Pre-create user
-        location = Location.objects.create(
+        Location = Location.objects.create(
             province="Kigali", district="Gasabo", sector="Kacyiru", cell="Kimironko", village="VillageX"
         )
-        person = Person.objects.create(national_id=1234567890123458, location=location)
+        person = Person.objects.create(national_id=1234567890123458, Location=Location)
         User.objects.create_user(email="existing@example.com", password="StrongPass1!", person=person)
 
         data = {
@@ -65,7 +65,7 @@ class RegisterViewTest(APITestCase):
             "confirm_password": "StrongPass1!",
             "person": {
                 "national_id": 1234567890123459,
-                "location": {
+                "Location": {
                     "province": "Kigali",
                     "district": "Gasabo",
                     "sector": "Kacyiru",
@@ -83,11 +83,11 @@ class RegisterViewTest(APITestCase):
 class OTPVerifyViewTest(APITestCase):
     def setUp(self):
         self.url = reverse('verify-otp')
-        # Create location, person, and user
-        self.location = Location.objects.create(
+        # Create Location, person, and user
+        self.Location = Location.objects.create(
             province="Kigali", district="Gasabo", sector="Kacyiru", cell="Kimironko", village="Village1"
         )
-        self.person = Person.objects.create(national_id=1234567890123456, location=self.location)
+        self.person = Person.objects.create(national_id=1234567890123456, Location=self.Location)
         self.user = User.objects.create_user(email="otpuser@example.com", password="StrongPass1!", person=self.person)
         self.otp = generate_otp(self.user, purpose="verification")
 

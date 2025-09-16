@@ -1,7 +1,8 @@
 # serializers.py
 from rest_framework import serializers
-from .models import Resident, Location
-from Location.serializers import LocationSerializer
+from .models import Resident
+from Village.models import Village
+from Village.serializers import LocationSerializer
 from account.models import Person, User
 
 
@@ -21,11 +22,11 @@ class UserSerilaizer(serializers.ModelSerializer):
 
 class ResidentSerializer(serializers.ModelSerializer):
     person = PersonSerializer()
-    location=LocationSerializer(read_only=True)
+    Village=LocationSerializer(read_only=True)
     added_by = UserSerilaizer(read_only=True)
     added_by_email = serializers.ReadOnlyField(source="added_by.email")
     person_name = serializers.ReadOnlyField(source="person.full_name")
-    location_name = serializers.ReadOnlyField(source="location.village")
+    location_name = serializers.ReadOnlyField(source="Village.village")
     # status = serializers.ChoiceField(choices=STATUS_CHOICES, required=False)
 
 
@@ -35,7 +36,7 @@ class ResidentSerializer(serializers.ModelSerializer):
             "resident_id",
             "person",
             "person_name",
-            "location",
+            "Village",
             "location_name",
             "status",
             "has_account",
@@ -50,9 +51,9 @@ class ResidentSerializer(serializers.ModelSerializer):
         def create(self, validated_data):
             person_data = validated_data.pop('person')
             person = Person.objects.create(**person_data)
-            location = self.context.get('location')
+            Village = self.context.get('Village')
             user = self.context.get('user')
-            return Resident.objects.create(person=person, location=location, added_by=user, **validated_data)
+            return Resident.objects.create(person=person, Village=Village, added_by=user, **validated_data)
                 
 
 

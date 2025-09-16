@@ -28,18 +28,19 @@ INSTALLED_APPS = [
 
     # Third-party
     'drf_spectacular',
-    'django_celery_beat',
+    # 'django_celery_beat',
     'corsheaders',
     'django_filters',
     
     # Local apps
     'account',
-    'Location',
+    'Village',
     'event',
     'Resident',
     'vistor',
-    "villages",
+    "villagesInfo",
     "VillageAnnouncement",
+    "VolunteerActivity",
 ]
 
 # MIDDLEWARE (CorsMiddleware moved near top)

@@ -9,7 +9,7 @@ class IsInResidentVillage(permissions.BasePermission):
     """
 
     def has_object_permission(self, request, view, obj):
-        location = get_resident_location(request.user)
-        if not location:
+        Location = get_resident_location(request.user)
+        if not Location:
             return False
-        return hasattr(obj, 'location') and obj.location == location
+        return hasattr(obj, 'Location') and obj.Location == Location

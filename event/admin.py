@@ -36,7 +36,7 @@ class EventAdmin(admin.ModelAdmin):
     list_filter = ("status", "date", "organizer")
 
     # Search fields
-    search_fields = ("title", "description", "location", "organizer__email")
+    search_fields = ("title", "description", "Location", "organizer__email")
 
     # Default ordering
     ordering = ("-created_at",)

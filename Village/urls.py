@@ -6,7 +6,7 @@ from rest_framework.routers import DefaultRouter
 from .views import LocationViewSet
 
 router = DefaultRouter()
-router.register(r'view/locations', LocationViewSet, basename='location')
+router.register(r'view/locations', LocationViewSet, basename='Location')
 
 
 urlpatterns = [

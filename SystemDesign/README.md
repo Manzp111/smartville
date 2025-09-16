@@ -39,7 +39,7 @@ Smart Village is a digital hub for Rwandan villages that facilitates resident an
 ### 7. Incident Reporting & Alerts
 - Residents can report incidents like robbery, theft, or suspicious activity.
 - Moderators verify reports and can send push alerts to village residents.
-- Optional: include description, location, and photos with reports.
+- Optional: include description, Location, and photos with reports.
 
 ### 8. Multilingual Support
 - Languages: Kinyarwanda, English, French.

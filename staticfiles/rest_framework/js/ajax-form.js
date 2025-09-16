@@ -100,16 +100,16 @@ function doAjaxSubmit(e) {
       replaceDocument(jqXHR.responseText);
 
       try {
-        // Modify the location and scroll to top, as if after page load.
+        // Modify the Location and scroll to top, as if after page load.
         history.replaceState({}, '', url);
         scroll(0, 0);
       } catch (err) {
         // History API not supported, so redirect.
-        window.location = url;
+        window.Location = url;
       }
     } else {
       // Not HTML content. We can't open this directly, so redirect.
-      window.location = url;
+      window.Location = url;
     }
   });
 

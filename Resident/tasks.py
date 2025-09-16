@@ -4,8 +4,8 @@ from django.core.mail import send_mail
 from django.conf import settings
 
 @shared_task
-def notify_village_leader_new_resident(leader_email, resident_name, village_name,location):
-    subject = f"New Resident Joined Your Village ({village_name}located on {location})"
+def notify_village_leader_new_resident(leader_email, resident_name, village_name,Location):
+    subject = f"New Resident Joined Your Village ({village_name}located on {Location})"
     message = f"{resident_name} has joined your village {village_name}."
     send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [leader_email])
 
@@ -33,8 +33,8 @@ def notify_village_leaders_of_migration(resident_name, old_location_id, new_loca
 
     Args:
         resident_name (str): Full name of the resident.
-        old_location_id (str/UUID): ID of the old location.
-        new_location_id (str/UUID): ID of the new location.
+        old_location_id (str/UUID): ID of the old Location.
+        new_location_id (str/UUID): ID of the new Location.
     """
     from Resident.models import Location  # Import here to avoid circular import
 

@@ -106,6 +106,11 @@ class UserManager(BaseUserManager):
             user.save()
 
         return user
+    def delete(self, *args, **kwargs):
+        # Delete related person first
+        if self.person:
+            self.person.delete()
+        super().delete(*args, **kwargs)
 
 
 
@@ -148,7 +153,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         if self.person:
-            return f"{self.person.first_name}-{self.person.last_name}_{self.role}"
+            return f"{self.user_id}-{self.person.first_name}-{self.person.last_name}_{self.role}"
         return f"{self.phone_number}_{self.role}"
 
 

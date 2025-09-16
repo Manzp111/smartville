@@ -31,14 +31,14 @@ def locate_point(request):
     return render(request, "home/home.html", {"result": result})
 
 
-# Location/views.py
+# Village/views.py
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 from django.db.models import Q
 
-from .models import Location
+from .models import Village
 from .serializers import LocationSerializer
 from event.utils import success_response, error_response
 
@@ -47,11 +47,11 @@ class LocationViewSet(viewsets.ReadOnlyModelViewSet):
     """
     A ViewSet for viewing locations with hierarchical filtering.
     """
-    queryset = Location.objects.all()
+    queryset = Village.objects.all()
     serializer_class = LocationSerializer
 
     @extend_schema(
-        summary="Get hierarchical location data chose from district",
+        summary="Get hierarchical Village data chose from district",
         description="""Retrieve locations in a hierarchical manner. 
         - Get all provinces
         - Filter districts by province
@@ -71,7 +71,7 @@ class LocationViewSet(viewsets.ReadOnlyModelViewSet):
     )
     @action(detail=False, methods=['get'])
     def hierarchical(self, request):
-        """Get hierarchical location data with unique values"""
+        """Get hierarchical Village data with unique values"""
         try:
             province = request.query_params.get('province')
             district = request.query_params.get('district')
@@ -80,7 +80,7 @@ class LocationViewSet(viewsets.ReadOnlyModelViewSet):
 
             # Return unique provinces
             if not any([province, district, sector, cell]):
-                provinces = Location.objects.values_list('province', flat=True).distinct()
+                provinces = Village.objects.values_list('province', flat=True).distinct()
                 return success_response(
                     data={"provinces": sorted(provinces)},
                     message="Provinces retrieved successfully"
@@ -88,7 +88,7 @@ class LocationViewSet(viewsets.ReadOnlyModelViewSet):
 
             # Return districts for a province
             if province and not district and not sector and not cell:
-                districts = Location.objects.filter(province=province)\
+                districts = Village.objects.filter(province=province)\
                     .values_list('district', flat=True).distinct()
                 return success_response(
                     data={"districts": sorted(districts)},
@@ -97,7 +97,7 @@ class LocationViewSet(viewsets.ReadOnlyModelViewSet):
 
             # Return sectors for a district
             if province and district and not sector and not cell:
-                sectors = Location.objects.filter(province=province, district=district)\
+                sectors = Village.objects.filter(province=province, district=district)\
                     .values_list('sector', flat=True).distinct()
                 return success_response(
                     data={"sectors": sorted(sectors)},
@@ -106,7 +106,7 @@ class LocationViewSet(viewsets.ReadOnlyModelViewSet):
 
             # Return cells for a sector
             if province and district and sector and not cell:
-                cells = Location.objects.filter(province=province, district=district, sector=sector)\
+                cells = Village.objects.filter(province=province, district=district, sector=sector)\
                     .values_list('cell', flat=True).distinct()
                 return success_response(
                     data={"cells": sorted(cells)},
@@ -115,7 +115,7 @@ class LocationViewSet(viewsets.ReadOnlyModelViewSet):
 
             # Return villages for a cell
             if province and district and sector and cell:
-                villages = Location.objects.filter(
+                villages = Village.objects.filter(
                     province=province, 
                     district=district, 
                     sector=sector, 
@@ -135,7 +135,7 @@ class LocationViewSet(viewsets.ReadOnlyModelViewSet):
 
         except Exception as e:
             return error_response(
-                message="Failed to retrieve location data", 
+                message="Failed to retrieve Village data", 
                 errors=str(e), 
                 status_code=400
             )

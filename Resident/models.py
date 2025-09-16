@@ -1,6 +1,6 @@
 from django.db import models
 from account.models import Person, User
-from Location.models import Location
+from Village.models import Village
 import uuid
 from django.utils import timezone
 
@@ -14,7 +14,7 @@ STATUS_CHOICES = [
 class Resident(models.Model):
     resident_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     person = models.ForeignKey(Person, on_delete=models.CASCADE, related_name="residencies")
-    location = models.ForeignKey(Location, on_delete=models.CASCADE, related_name="residents")
+    village = models.ForeignKey(Village, on_delete=models.CASCADE, related_name="residents")
     has_account = models.BooleanField(default=True)
     added_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="added_residents")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="PENDING")
@@ -39,4 +39,4 @@ class Resident(models.Model):
         self.save()
 
     def __str__(self):
-        return f"{self.person} @ {self.location.village}"
+        return f"{self.person} @ {self.Location.village}"

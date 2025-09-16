@@ -27,10 +27,10 @@ class VisitorRolePermissionMixin:
         if user.role == 'admin':
             return qs
 
-        location = get_resident_location(user)
+        Location = get_resident_location(user)
 
         if user.role == 'leader':
-            return qs.filter(visitor_location=location) if location else qs.none()
+            return qs.filter(visitor_location=Location) if Location else qs.none()
 
         if user.role == 'resident':
             return qs.filter(host__added_by=user)
@@ -39,22 +39,22 @@ class VisitorRolePermissionMixin:
 
     def perform_create(self, serializer):
         user = self.request.user
-        location = None
+        Location = None
 
-        # Find location for resident/leader
+        # Find Location for resident/leader
         if user.role in ["resident", "leader"]:
             if hasattr(user, 'residencies') and user.residencies.exists():
-                location = user.residencies.first().location
+                Location = user.residencies.first().Location
             elif hasattr(user, 'led_villages') and user.led_villages.exists():
-                location = user.led_villages.first()
+                Location = user.led_villages.first()
 
-            if not location:
+            if not Location:
                 raise PermissionDenied("You must belong to a village to add a visitor.")
 
         elif user.role == "admin":
-            location = serializer.validated_data.get("visitor_location")
-            if not location:
-                raise PermissionDenied("Admin must specify a visitor location.")
+            Location = serializer.validated_data.get("visitor_location")
+            if not Location:
+                raise PermissionDenied("Admin must specify a visitor Location.")
 
         # Handle nested person data (like for Resident)
         person_data = serializer.validated_data.pop('visitor_info', None)
@@ -72,29 +72,29 @@ class VisitorRolePermissionMixin:
 
         visitor = serializer.save(
             visitor_info=person,
-            visitor_location=location,
+            visitor_location=Location,
             host=user.residencies.first() if user.role == "resident" else None
         )
 
         # Notify leader if exists
-        if location and hasattr(location, 'leader') and location.leader and location.leader.email:
+        if Location and hasattr(Location, 'leader') and Location.leader and Location.leader.email:
             send_new_visitor_email.delay(
-                leader_email=location.leader.email,
+                leader_email=Location.leader.email,
                 visitor_name=f"{visitor.visitor_info.first_name} {visitor.visitor_info.last_name}",
                 host_name=str(visitor.host.person),
-                village_name=f"{location.village}"
+                village_name=f"{Location.village}"
             )
 
 
 
     def perform_destroy(self, instance):
         user = self.request.user
-        location = get_resident_location(user)
+        Location = get_resident_location(user)
 
         if user.role == 'resident' and instance.host.added_by != user:
             raise PermissionDenied("You can only delete your own visitors.")
 
-        if user.role == 'leader' and instance.visitor_location != location:
+        if user.role == 'leader' and instance.visitor_location != Location:
             raise PermissionDenied("You cannot delete visitors from another village.")
 
         # Admin can delete anything

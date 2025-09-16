@@ -316,9 +316,9 @@ function primitiveToNode(data, baseUrl) {
       var value = fieldsData[idx];
       var name = getString(value, 'name');
       var required = getBoolean(value, 'required');
-      var location = getString(value, 'location');
+      var Location = getString(value, 'Location');
       var fieldDescription = getString(value, 'fieldDescription');
-      var field = new document.Field(name, required, location, fieldDescription);
+      var field = new document.Field(name, required, Location, fieldDescription);
       fields.push(field);
     }
     return new document.Link(_url, method, 'application/json', fields, _title, _description);
@@ -488,7 +488,7 @@ var Link = function Link(url, method) {
 
 var Field = function Field(name) {
   var required = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
-  var location = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : '';
+  var Location = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : '';
   var description = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : '';
 
   _classCallCheck(this, Field);
@@ -499,7 +499,7 @@ var Field = function Field(name) {
 
   this.name = name;
   this.required = required;
-  this.location = location;
+  this.Location = Location;
   this.description = description;
 };
 
@@ -663,14 +663,14 @@ var HTTPTransport = function () {
         }
 
         fieldNames.push(field.name);
-        if (field.location === 'query') {
+        if (field.Location === 'query') {
           queryParams[field.name] = params[field.name];
-        } else if (field.location === 'path') {
+        } else if (field.Location === 'path') {
           pathParams[field.name] = params[field.name];
-        } else if (field.location === 'form') {
+        } else if (field.Location === 'form') {
           formParams[field.name] = params[field.name];
           hasBody = true;
-        } else if (field.location === 'body') {
+        } else if (field.Location === 'body') {
           formParams = params[field.name];
           hasBody = true;
         }
@@ -990,7 +990,7 @@ var required = require('requires-port')
  * 1. The property we should set when parsing this value.
  * 2. Indication if it's backwards or forward parsing, when set as number it's
  *    the value of extra chars that should be split off.
- * 3. Inherit from location if non existing in the parser.
+ * 3. Inherit from Location if non existing in the parser.
  * 4. `toLowerCase` the resulting value.
  */
 var rules = [
@@ -1069,18 +1069,18 @@ function resolve(relative, base) {
  *
  * @constructor
  * @param {String} address URL we want to parse.
- * @param {Object|String} location Location defaults for relative paths.
+ * @param {Object|String} Location Location defaults for relative paths.
  * @param {Boolean|Function} parser Parser for the query string.
  * @api public
  */
-function URL(address, location, parser) {
+function URL(address, Location, parser) {
   if (!(this instanceof URL)) {
-    return new URL(address, location, parser);
+    return new URL(address, Location, parser);
   }
 
   var relative, extracted, parse, instruction, index, key
     , instructions = rules.slice()
-    , type = typeof location
+    , type = typeof Location
     , url = this
     , i = 0;
 
@@ -1096,21 +1096,21 @@ function URL(address, location, parser) {
   //    for relative paths.
   //
   if ('object' !== type && 'string' !== type) {
-    parser = location;
-    location = null;
+    parser = Location;
+    Location = null;
   }
 
   if (parser && 'function' !== typeof parser) parser = qs.parse;
 
-  location = lolcation(location);
+  Location = lolcation(Location);
 
   //
   // Extract protocol information before running the instructions.
   //
   extracted = extractProtocol(address || '');
   relative = !extracted.protocol && !extracted.slashes;
-  url.slashes = extracted.slashes || relative && location.slashes;
-  url.protocol = extracted.protocol || location.protocol || '';
+  url.slashes = extracted.slashes || relative && Location.slashes;
+  url.protocol = extracted.protocol || Location.protocol || '';
   address = extracted.rest;
 
   //
@@ -1142,7 +1142,7 @@ function URL(address, location, parser) {
     }
 
     url[key] = url[key] || (
-      relative && instruction[3] ? location[key] || '' : ''
+      relative && instruction[3] ? Location[key] || '' : ''
     );
 
     //
@@ -1164,11 +1164,11 @@ function URL(address, location, parser) {
   //
   if (
       relative
-    && location.slashes
+    && Location.slashes
     && url.pathname.charAt(0) !== '/'
-    && (url.pathname !== '' || location.pathname !== '')
+    && (url.pathname !== '' || Location.pathname !== '')
   ) {
-    url.pathname = resolve(url.pathname, location.pathname);
+    url.pathname = resolve(url.pathname, Location.pathname);
   }
 
   //
@@ -1327,7 +1327,7 @@ URL.prototype.toString = function toString(stringify) {
 // others or testing.
 //
 URL.extractProtocol = extractProtocol;
-URL.location = lolcation;
+URL.Location = lolcation;
 URL.qs = qs;
 
 module.exports = URL;
@@ -1350,19 +1350,19 @@ var ignore = { hash: 1, query: 1 }
   , URL;
 
 /**
- * The location object differs when your code is loaded through a normal page,
+ * The Location object differs when your code is loaded through a normal page,
  * Worker or through a worker using a blob. And with the blobble begins the
- * trouble as the location object will contain the URL of the blob, not the
- * location of the page where our code is loaded in. The actual origin is
+ * trouble as the Location object will contain the URL of the blob, not the
+ * Location of the page where our code is loaded in. The actual origin is
  * encoded in the `pathname` so we can thankfully generate a good "default"
- * location from it so we can generate proper relative URL's again.
+ * Location from it so we can generate proper relative URL's again.
  *
- * @param {Object|String} loc Optional default location object.
+ * @param {Object|String} loc Optional default Location object.
  * @returns {Object} lolcation object.
  * @api public
  */
 module.exports = function lolcation(loc) {
-  loc = loc || global.location || {};
+  loc = loc || global.Location || {};
   URL = URL || require('./');
 
   var finaldestination = {}
@@ -1987,7 +1987,7 @@ module.exports = function lolcation(loc) {
       throw new RangeError('Invalid status code')
     }
 
-    return new Response(null, {status: status, headers: {location: url}})
+    return new Response(null, {status: status, headers: {Location: url}})
   }
 
   self.Headers = Headers

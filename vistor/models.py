@@ -1,7 +1,7 @@
 import uuid
 from django.db import models
 from django.conf import settings
-from Location.models import Location
+from Village.models import Village
 from account.models import Person
 from Resident.models import Resident
 
@@ -9,7 +9,7 @@ class Visitor(models.Model):
     visitor_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     visitor_info = models.ForeignKey(Person, on_delete=models.CASCADE)
     host = models.ForeignKey(Resident,on_delete=models.CASCADE)
-    visitor_location = models.ForeignKey(Location, on_delete=models.CASCADE)    
+    visitor_location = models.ForeignKey(Village, on_delete=models.CASCADE)    
     reason_for_visit = models.TextField()   
     arrival_date = models.DateField(help_text="Date the visitor actually arrives")
     registered_date = models.DateTimeField(auto_now_add=True)

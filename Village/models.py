@@ -3,7 +3,7 @@ from django.conf import settings
 import uuid
 
 
-class Location(models.Model):
+class Village(models.Model):
     village_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     province = models.CharField(max_length=50)
     district = models.CharField(max_length=50)
@@ -16,7 +16,7 @@ class Location(models.Model):
         blank=True,
         on_delete=models.SET_NULL,
         related_name='led_villages',
-        default="dc558906-6538-43ec-a6e7-4e877421ae64" 
+        default="5aa97242-7ac2-4096-9a78-2b6c21abef62" 
     )
 
     def get_full_address(self):

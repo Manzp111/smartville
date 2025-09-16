@@ -8,7 +8,7 @@ from drf_spectacular.types import OpenApiTypes
 from django_filters.rest_framework import DjangoFilterBackend
 from django.utils import timezone
 
-from .models import Resident, Location
+from .models import Resident, Village
 from .serializers import ResidentSerializer, ResidentStatusSerializer
 from account.permisions import IsAdminUser, IsLeaderOrAdmin, IsVerifiedUser
 from .tasks import notify_village_leader_new_resident
@@ -26,7 +26,7 @@ from .tasks import notify_village_leaders_of_migration
         request=ResidentSerializer,
         description="""Retrieve a paginated list of residents based on user permissions:
         - **Admins**: See all residents
-        - **Leaders**: See residents in their assigned location
+        - **Leaders**: See residents in their assigned Village
         - **Regular Users**: See only their own resident record
         
         Supports filtering, searching, and ordering.""",
@@ -129,8 +129,8 @@ class ResidentViewSet(VillageRolePermissionMixin,viewsets.ModelViewSet):
 # Resident/views.py
     @extend_schema(
         summary="Join a village community",
-        description="""Allows verified users to join a specific village community by providing location details.
-        The system will find or create the location and create a resident record with PENDING status.""",
+        description="""Allows verified users to join a specific village community by providing Village details.
+        The system will find or create the Village and create a resident record with PENDING status.""",
         request=OpenApiTypes.OBJECT,
         examples=[
             OpenApiExample(
@@ -161,7 +161,7 @@ class ResidentViewSet(VillageRolePermissionMixin,viewsets.ModelViewSet):
                                 "id": 1,
                                 "status": "PENDING",
                                 "person": {"id": 1, "full_name": "John Doe"},
-                                "location": {
+                                "Village": {
                                     "village_id": "uuid-123",
                                     "province": "Amajyaruguru",
                                     "district": "Burera",
@@ -175,7 +175,7 @@ class ResidentViewSet(VillageRolePermissionMixin,viewsets.ModelViewSet):
                     )
                 ]
             ),
-            400: OpenApiResponse(description="Validation error - Missing location data"),
+            400: OpenApiResponse(description="Validation error - Missing Village data"),
             409: OpenApiResponse(description="Conflict - Already a resident of this village")
         }
     )
@@ -187,7 +187,7 @@ class ResidentViewSet(VillageRolePermissionMixin,viewsets.ModelViewSet):
         if not person:
             return error_response("No person record for the user", status_code=400)
         
-        # Extract location data from request
+        # Extract Village data from request
         location_data = request.data
         required_fields = ['province', 'district', 'sector', 'cell', 'village']
         
@@ -195,51 +195,51 @@ class ResidentViewSet(VillageRolePermissionMixin,viewsets.ModelViewSet):
         missing_fields = [field for field in required_fields if not location_data.get(field)]
         if missing_fields:
             return error_response(
-                f"Missing required location fields: {', '.join(missing_fields)}",
+                f"Missing required Village fields: {', '.join(missing_fields)}",
                 status_code=400
             )
         
-        # Find or create the location
+        # Find or create the Village
         try:
-            location, created = Location.objects.get_or_create(
+            Village, created = Village.objects.get_or_create(
                 province=location_data['province'],
                 district=location_data['district'],
                 sector=location_data['sector'],
                 cell=location_data['cell'],
                 village=location_data['village'],
                 defaults={
-                    # You can set default values if creating new location
+                    # You can set default values if creating new Village
                     'leader': None  # or set a default leader if needed
                 }
             )
         except Exception as e:
-            return error_response(f"Error creating/finding location: {str(e)}", status_code=400)
+            return error_response(f"Error creating/finding Village: {str(e)}", status_code=400)
         
-        # # Check if user is already a resident of this location
-        # if Resident.objects.filter(person=person, location=location, is_deleted=False).exists():
+        # # Check if user is already a resident of this Village
+        # if Resident.objects.filter(person=person, Village=Village, is_deleted=False).exists():
         #     return error_response("Already a resident of this village", status_code=409)
         
         # Create resident record with PENDING status
         existing_resident = Resident.objects.filter(person=person, is_deleted=False).first()
         if existing_resident:
            return error_response(
-                     f"You are already a resident in {existing_resident.location.village} village in {existing_resident.location.sector} sector",
+                     f"You are already a resident in {existing_resident.Village.village} village in {existing_resident.Village.sector} sector",
                       status_code=409
                 )
         resident = Resident.objects.create(
             person=person,
-            location=location,
+            Village=Village,
             added_by=user,
             status='PENDING'  # Assuming you have a status field
         )
         
         # Notify village leader if one exists
-        if location.leader:
+        if Village.leader:
             notify_village_leader_new_resident.delay(
-                location.leader.email,
+                Village.leader.email,
                 f"{person.first_name} {person.last_name}",
-                location.village,
-                location.get_full_address()  # Assuming you have a method for this
+                Village.village,
+                Village.get_full_address()  # Assuming you have a method for this
             )
         
         serializer = self.get_serializer(resident)
@@ -287,7 +287,7 @@ class ResidentViewSet(VillageRolePermissionMixin,viewsets.ModelViewSet):
                                 "id": 1,
                                 "status": "APPROVED",
                                 "person": {"id": 1, "full_name": "John Doe"},
-                                "location": {"id": 123, "village": "Village A"}
+                                "Village": {"id": 123, "village": "Village A"}
                             }
                         }
                     )
@@ -327,7 +327,7 @@ class ResidentViewSet(VillageRolePermissionMixin,viewsets.ModelViewSet):
         - Sets is_deleted flag to True
         - Record remains in database for audit purposes
         - Can be restored using the restore endpoint
-        - Doesn't affect related person/location records
+        - Doesn't affect related person/Village records
         
         **Permissions:** Village leaders (for their village) and admins only""",
         responses={
@@ -382,7 +382,7 @@ class ResidentViewSet(VillageRolePermissionMixin,viewsets.ModelViewSet):
                                 "status": "APPROVED",
                                 "is_deleted": False,
                                 "person": {"id": 1, "full_name": "John Doe"},
-                                "location": {"id": 123, "village": "Village A"}
+                                "Village": {"id": 123, "village": "Village A"}
                             }
                         }
                     )
@@ -472,7 +472,7 @@ class ResidentViewSet(VillageRolePermissionMixin,viewsets.ModelViewSet):
     def migrate_village(self, request):
         """
         Moves a resident to a new village. Soft deletes the old Resident record and creates a new one.
-        Only allows migration if the new location exists in the database.
+        Only allows migration if the new Village exists in the database.
         Notifies old and new village leaders asynchronously.
         """
         user = request.user
@@ -480,28 +480,28 @@ class ResidentViewSet(VillageRolePermissionMixin,viewsets.ModelViewSet):
         if not person:
             return error_response("No person record found for this user.", status_code=400)
 
-        # Validate required location fields
+        # Validate required Village fields
         location_data = request.data
         required_fields = ["province", "district", "sector", "cell", "village"]
         missing_fields = [f for f in required_fields if not location_data.get(f)]
         if missing_fields:
             return error_response(
-                f"Missing required location fields: {', '.join(missing_fields)}",
+                f"Missing required Village fields: {', '.join(missing_fields)}",
                 status_code=400
             )
 
-        # Match the location exactly with existing DB records
+        # Match the Village exactly with existing DB records
         try:
-            new_location = Location.objects.get(
+            new_location = Village.objects.get(
                 province=location_data["province"],
                 district=location_data["district"],
                 sector=location_data["sector"],
                 cell=location_data["cell"],
                 village=location_data["village"]
             )
-        except Location.DoesNotExist:
+        except Village.DoesNotExist:
             return error_response(
-                "The specified village does not exist in the system. Please check the location data.",
+                "The specified village does not exist in the system. Please check the Village data.",
                 status_code=404
             )
 
@@ -514,12 +514,12 @@ class ResidentViewSet(VillageRolePermissionMixin,viewsets.ModelViewSet):
                     old_resident.is_deleted = True
                     old_resident.deleted_at = timezone.now()
                     old_resident.save()
-                    old_location_id = old_resident.location.village_id
+                    old_location_id = old_resident.Village.village_id
 
                 # Create new resident record
                 new_resident = Resident.objects.create(
                     person=person,
-                    location=new_location,
+                    Village=new_location,
                     added_by=user,
                     status="PENDING"
                 )

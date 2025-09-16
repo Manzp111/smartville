@@ -3,7 +3,7 @@ from .models import User, Person, OTP
 
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
-    list_display = ('person', 'phone_number', 'role', 'is_active', 'is_staff', 'is_superuser','is_verified')
+    list_display = ("user_id",'person', 'phone_number', 'role', 'is_active', 'is_staff', 'is_superuser','is_verified')
     search_fields = ('phone_number',)
     list_filter = ('role', 'is_active', 'is_staff', 'is_superuser','is_verified')
     ordering = ('email',)
@@ -11,7 +11,7 @@ class UserAdmin(admin.ModelAdmin):
 class PersonAdmin(admin.ModelAdmin):
     list_display = ('first_name', 'last_name', 'phone_number')
     search_fields = ('first_name', 'last_name', 'phone_number')
-    # list_filter = ('location',)
+    # list_filter = ('Location',)
     ordering = ('first_name',)
 
 @admin.register(OTP)

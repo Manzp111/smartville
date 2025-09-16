@@ -8,7 +8,7 @@ from .tasks import send_verification_email_task
 from django.utils import timezone
 from pytz import timezone as pytz_timezone
 from event.utils import success_response, error_response
-from Location.models import Location
+from Village.models import Village
 from Resident.models import Resident
 
 # -----------------------------
@@ -97,11 +97,11 @@ class RegisterSerializer(serializers.ModelSerializer):
         user.set_password(password)
         user.save()
 
-        # create Resident linked to location
-        location = Location.objects.get(village_id=location_id)
+        # create Resident linked to Location
+        Location = Village.objects.get(village_id=location_id)
         Resident.objects.create(
             person=person,
-            location=location,
+            Location=Location,
             added_by=user,
             status="PENDING"
         )

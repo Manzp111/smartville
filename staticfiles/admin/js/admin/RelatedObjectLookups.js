@@ -93,7 +93,7 @@
         // select (+ or :pencil:) update ForeignKey PK of the rest of selects
         // in the page.
 
-        const path = win.location.pathname;
+        const path = win.Location.pathname;
         // Extract the model from the popup url '.../<model>/add/' or
         // '.../<model>/<id>/change/' depending the action (add or change).
         const modelName = path.split('/')[path.split('/').length - (objId ? 4 : 3)];

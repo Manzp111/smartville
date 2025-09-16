@@ -17,7 +17,7 @@
 
     function handleCarousel($carousel) {
         const errors = $('.errorlist li', $carousel);
-        const hash = document.location.hash;
+        const hash = document.Location.hash;
 
         // If we have errors, open that tab first
         if (errors.length) {
@@ -46,14 +46,14 @@
             if (history.pushState) {
                 history.pushState(null, null, hash);
             } else {
-                location.hash = hash;
+                Location.hash = hash;
             }
         });
     }
 
     function handleTabs($tabs) {
         const errors = $('.change-form .errorlist li');
-        const hash = document.location.hash;
+        const hash = document.Location.hash;
 
         // If we have errors, open that tab first
         if (errors.length) {
@@ -75,14 +75,14 @@
             if (history.pushState) {
                 history.pushState(null, null, e.target.hash);
             } else {
-                location.hash = e.target.hash;
+                Location.hash = e.target.hash;
             }
         });
     }
 
     function handleCollapsible($collapsible) {
         const errors = $('.errorlist li', $collapsible);
-        const hash = document.location.hash;
+        const hash = document.Location.hash;
 
         // If we have errors, open that tab first
         if (errors.length) {
@@ -105,7 +105,7 @@
             if (history.pushState) {
                 history.pushState(null, null, '#' + e.target.id);
             } else {
-                location.hash = '#' + e.target.id;
+                Location.hash = '#' + e.target.id;
             }
         });
     }
