@@ -3,6 +3,7 @@ from django.conf import settings
 import uuid
 
 
+
 class Location(models.Model):
     village_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     province = models.CharField(max_length=50)

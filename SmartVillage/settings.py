@@ -38,7 +38,13 @@ INSTALLED_APPS = [
     'event',
     'Resident',
     'vistor',
+
+    'complaint',
+    'alert',
+
+
     "villages",
+
 ]
 
 # MIDDLEWARE (CorsMiddleware moved near top)

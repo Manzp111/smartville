@@ -1,4 +1,11 @@
 from rest_framework.routers import DefaultRouter
+<<<<<<< HEAD
+from event.views import EventViewSet, EventAttendanceViewSet
+
+router = DefaultRouter()
+router.register(r'attendance', EventAttendanceViewSet)
+router.register(r'events', EventViewSet, basename='event')
+=======
 from .views import EventViewSet
 from django.urls import path,include
 router = DefaultRouter()
@@ -14,4 +21,5 @@ urlpatterns = [
     path("",include(router.urls)),
 
 ]
+>>>>>>> main
 
