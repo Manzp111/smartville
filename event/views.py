@@ -142,17 +142,7 @@ class EventViewSet(EventRolePermissionMixin, viewsets.ModelViewSet):
     filterset_fields = ['status', 'village', 'date']
     search_fields = ['title', 'description', 'date']
     ordering = ['-created_at']
-    def get_permissions(self):
-        action = getattr(self, "action", None)
-        if action == "retrieve" or (self.request.method == "GET" and "pk" in self.kwargs):
-            return [AllowAny()]
-        return super().get_permissions()
 
-    def get_authenticators(self):
-        action = getattr(self, "action", None)
-        if action == "retrieve" or (self.request.method == "GET" and "pk" in self.kwargs):
-            return []
-        return super().get_authenticators()
 
 
  
