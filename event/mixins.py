@@ -2,8 +2,22 @@
 from rest_framework.exceptions import PermissionDenied, MethodNotAllowed
 from drf_spectacular.utils import extend_schema
 from Resident.utils import get_resident_location
+from rest_framework.permissions import AllowAny
+
+
 
 class EventRolePermissionMixin:
+
+    # def get_permissions(self):
+        
+    #     if self.request and self.request.method == "GET" and self.detail:
+    #         return [AllowAny()]
+    #     return super().get_permissions()
+
+    # def get_authenticators(self):
+    #     if self.request and self.request.method == "GET" and self.detail:
+    #         return []  # no authentication required
+    #     return super().get_authenticators()
     """
     Handles Event access based on user roles:
     - Admin: full access

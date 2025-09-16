@@ -46,35 +46,66 @@ class Person(models.Model):
 # User Manager
 # -----------------------------
 class UserManager(BaseUserManager):
-    def create_user(self, email, password=None, first_name=None, last_name=None, **extra_fields):
-        if not email:
-            raise ValueError("Email is required")
+    def normalize_phone(self,phone):
+        """
+        Normalize Rwandan phone numbers to format: 250XXXXXXXXX
+        Examples:
+            0781234567 -> 250781234567
+            +250781234567 -> 250781234567
+            250781234567 -> 250781234567
+        """
+        if not phone:
+            return None
+
+        
+        phone = phone.replace(" ", "").replace("-", "").replace("+", "")
+
+        
+        if phone.startswith("0"):
+            phone = "250" + phone[1:]
+
+        return phone
+
+
+    def create_user(self, phone_number, password=None, first_name=None, last_name=None, national_id=None,gender=None,person_type='resident',**extra_fields):
+        if not phone_number:
+            raise ValueError("phone_number is required")
         if not password:
             raise ValueError("Password is required")
 
-        email = self.normalize_email(email)
-        user = self.model(email=email, **extra_fields)
+        phone_number = self.normalize_phone(phone_number)
+
+        person = Person.objects.create(
+            first_name=first_name,
+            last_name=last_name,
+            national_id=national_id,
+            phone_number=phone_number,
+            gender=gender,
+            person_type=person_type
+        )
+
+
+        user = self.model(phone_number=phone_number, person=person, **extra_fields)
         user.set_password(password)
         user.save()
 
-        # Optionally create a Person linked to user
-        if first_name or last_name:
+        return user
+
+    def create_superuser(self, phone_number, password=None, **extra_fields):
+        extra_fields.setdefault("is_superuser", True)
+        extra_fields.setdefault("is_staff", True)
+        extra_fields.setdefault("is_active", True)
+        return self.create_user(phone_number=phone_number, password=password, **extra_fields)
+        if not user.person:
             from account.models import Person
             person = Person.objects.create(
-                first_name=first_name,
-                last_name=last_name,
+                phone_number=user.phone_number,
                 person_type='resident'
             )
             user.person = person
             user.save()
 
         return user
-
-    def create_superuser(self, email, password=None, **extra_fields):
-        extra_fields.setdefault("is_superuser", True)
-        extra_fields.setdefault("is_staff", True)
-        extra_fields.setdefault("is_active", True)
-        return self.create_user(email=email, password=password, **extra_fields)
 
 
 
@@ -88,7 +119,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     # user_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     user_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     person = models.ForeignKey(Person, on_delete=models.SET_NULL, null=True, blank=True)
-    email = models.EmailField(unique=True, db_index=True)
+    phone_number = models.CharField(max_length=15, unique=True, null=True, blank=True)
+    email = models.EmailField(unique=True, db_index=True, null=True, blank=True)
     password = models.CharField(max_length=128)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='resident')
     is_active = models.BooleanField(default=True)
@@ -99,7 +131,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    USERNAME_FIELD = 'email'
+    USERNAME_FIELD = 'phone_number'
     REQUIRED_FIELDS = []
 
     objects = UserManager()
@@ -117,7 +149,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         if self.person:
             return f"{self.person.first_name}-{self.person.last_name}_{self.role}"
-        return f"{self.email}_{self.role}"
+        return f"{self.phone_number}_{self.role}"
 
 
 

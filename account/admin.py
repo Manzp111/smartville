@@ -3,8 +3,8 @@ from .models import User, Person, OTP
 
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
-    list_display = ('person', 'email', 'role', 'is_active', 'is_staff', 'is_superuser','is_verified')
-    search_fields = ('email',)
+    list_display = ('person', 'phone_number', 'role', 'is_active', 'is_staff', 'is_superuser','is_verified')
+    search_fields = ('phone_number',)
     list_filter = ('role', 'is_active', 'is_staff', 'is_superuser','is_verified')
     ordering = ('email',)
 @admin.register(Person)

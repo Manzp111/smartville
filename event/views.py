@@ -22,7 +22,7 @@ from rest_framework import status
 from .models import Event
 from Location.models import Location
 from .serializers import EventSerializer
-
+from rest_framework.permissions import AllowAny
 
 
 from rest_framework.views import APIView
@@ -50,6 +50,7 @@ from .serializers import EventSerializer,VillageEventsResponseSerializer
 class EventsByVillageAPIView(APIView):
 
     @extend_schema(
+        summary="get village event only",
         request=None,  
         parameters=[
             OpenApiParameter(
@@ -65,6 +66,7 @@ class EventsByVillageAPIView(APIView):
             OpenApiExample(
                 "Village Events Response Example",
                 description="Example response showing events for a village",
+                
                 value={
                     "village_id": "ed0da226-2a9d-4689-96b1-685f135a8bc9",
                     "village": "Gatenga",
@@ -105,23 +107,54 @@ class EventsByVillageAPIView(APIView):
 
         response_data = {
             "success":True,
-            "message":f"event o {village.village} of retrived well",
-            "village_id": str(village.village_id),
-            "village": village.village,
+            "message":f"event of {village.village} of retrived well",
+            "data":{
+            
+            "village": {
+                "province":village.province,
+                "district":village.district,
+                "sector":village.sector,
+                "cell":village.cell,
+                "villages_name":village.village,
+                "village_id": str(village.village_id),
+                "village_leader":{
+                    "user_id":village.leader.user_id,
+                    "first_name":village.leader.person.first_name,
+                    "last_name":village.leader.person.last_name,
+                    "email":village.leader.email,
+                    "phone_number":village.leader.person.phone_number,
+                },
+            },
             "events": event_serializer.data
+            }
         }
         return Response(response_data, status=status.HTTP_200_OK)
 
 
 
 
-class EventViewSet(EventRolePermissionMixin,viewsets.ModelViewSet):
+from rest_framework.permissions import AllowAny
+
+class EventViewSet(EventRolePermissionMixin, viewsets.ModelViewSet):
     queryset = Event.objects.all().order_by("-created_at")
     serializer_class = EventSerializer
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['status', 'village', 'date'] 
-    search_fields = ['title', 'description', 'date'] 
+    filterset_fields = ['status', 'village', 'date']
+    search_fields = ['title', 'description', 'date']
     ordering = ['-created_at']
+    def get_permissions(self):
+        action = getattr(self, "action", None)
+        if action == "retrieve" or (self.request.method == "GET" and "pk" in self.kwargs):
+            return [AllowAny()]
+        return super().get_permissions()
+
+    def get_authenticators(self):
+        action = getattr(self, "action", None)
+        if action == "retrieve" or (self.request.method == "GET" and "pk" in self.kwargs):
+            return []
+        return super().get_authenticators()
+
+
  
         
        

@@ -7,8 +7,9 @@ from .utils import generate_otp
 from .tasks import send_verification_email_task
 from django.utils import timezone
 from pytz import timezone as pytz_timezone
-from event.utils import success_response,error_response
-
+from event.utils import success_response, error_response
+from Location.models import Location
+from Resident.models import Resident
 
 # -----------------------------
 # Person Serializer
@@ -16,23 +17,25 @@ from event.utils import success_response,error_response
 class PersonSerializer(serializers.ModelSerializer):
     class Meta:
         model = Person
-        fields = ["first_name", "last_name", "phone_number"]
+        fields = ["first_name", "last_name", "phone_number", "national_id", "gender", "person_type"]
 
 
 # -----------------------------
 # Register Serializer
 # -----------------------------
 class RegisterSerializer(serializers.ModelSerializer):
+
     person = PersonSerializer()
     password = serializers.CharField(write_only=True, min_length=8)
+    location_id = serializers.UUIDField(write_only=True)
     confirm_password = serializers.CharField(write_only=True)
-    email = serializers.EmailField(
-        validators=[UniqueValidator(queryset=User.objects.all(), message="Email already exists.")]
+    phone_number = serializers.CharField(
+        validators=[UniqueValidator(queryset=User.objects.all(), message="Phone number already exists.")]
     )
 
     class Meta:
         model = User
-        fields = ["email", "password", "confirm_password", "person"]
+        fields = ["password", "confirm_password", "person", "phone_number","location_id"]
 
     # Password validation
     def validate_password(self, value):
@@ -48,9 +51,10 @@ class RegisterSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Password must not contain spaces.")
         if value.islower() or value.isupper():
             raise serializers.ValidationError("Password must contain both uppercase and lowercase letters.")
-        email = self.initial_data.get("email", "")
-        if value == email:
-            raise serializers.ValidationError("Password must not be the same as email.")
+        
+        phone_number = self.initial_data.get("phone_number", "")
+        if value == phone_number:
+            raise serializers.ValidationError("Password must not be the same as phone number.")
         return value
 
     # Confirm password match
@@ -59,14 +63,23 @@ class RegisterSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Passwords do not match.")
         return data
 
+    # Create user
     def create(self, validated_data):
         person_data = validated_data.pop("person")
+        location_id = validated_data.pop("location_id")
         validated_data.pop("confirm_password")
+        phone_number = validated_data.pop("phone_number")
 
         with transaction.atomic():
-            person = Person.objects.create(**person_data)
+            # Create Person
+            person_data["phone_number"] = phone_number
+            person = Person.objects.create(
+                phone_number=validated_data["phone_number"], 
+                **person_data)
+
+            # Create User
             user = User.objects.create(
-                email=validated_data["email"],
+                phone_number=phone_number,
                 person=person,
                 is_active=True,
                 is_verified=False
@@ -74,13 +87,22 @@ class RegisterSerializer(serializers.ModelSerializer):
             user.set_password(validated_data["password"])
             user.save()
 
-            otp = generate_otp(user, purpose="verification")
-            send_verification_email_task.delay(
-                user.person.first_name,
-                user.person.last_name,
-                user.email,
-                otp.code
+            location = Location.objects.get(village_id=location_id)
+            Resident.objects.create(
+                person=person,
+                location=location,
+                added_by=user,  # optional, user created their own resident
+                status="PENDING",
             )
+
+            # Generate OTP
+            # otp = generate_otp(user, purpose="verification")
+            # send_verification_email_task.delay(
+            #     user.person.first_name,
+            #     user.person.last_name,
+            #     user.phone_number,  
+            #     otp.code
+            # )
 
         return user
 
@@ -93,14 +115,14 @@ class UserListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["user_id", "email", "role", "is_verified", "is_active", "person", "created_at"]
+        fields = ["user_id", "phone_number", "role", "is_verified", "is_active", "person", "created_at"]
 
 
 # -----------------------------
 # OTP Verify Serializer
 # -----------------------------
 class OTPVerifySerializer(serializers.Serializer):
-    email = serializers.EmailField()
+    phone_number = serializers.CharField()
     otp_code = serializers.CharField(
         min_length=6,
         max_length=6,
@@ -112,7 +134,7 @@ class OTPVerifySerializer(serializers.Serializer):
 
     def validate(self, data):
         try:
-            user = User.objects.get(email=data['email'])
+            user = User.objects.get(phone_number=data['phone_number'])
         except User.DoesNotExist:
             raise serializers.ValidationError("User not found.")
 
@@ -141,7 +163,7 @@ class OTPVerifySerializer(serializers.Serializer):
         return {
             "success": True,
             "message": "User successfully verified.",
-            "data": {"email": user.email}
+            "data": {"phone_number": user.phone_number}
         }
 
 
@@ -149,13 +171,13 @@ class OTPVerifySerializer(serializers.Serializer):
 # Resend OTP Serializer
 # -----------------------------
 class ResendOTPSerializer(serializers.Serializer):
-    email = serializers.EmailField()
+    phone_number = serializers.CharField()
 
-    def validate_email(self, value):
+    def validate_phone_number(self, value):
         try:
-            user = User.objects.get(email=value)
+            user = User.objects.get(phone_number=value)
         except User.DoesNotExist:
-            raise serializers.ValidationError("No user found with this email.")
+            raise serializers.ValidationError("No user found with this phone number.")
 
         if user.is_verified:
             raise serializers.ValidationError("User is already verified.")
@@ -179,12 +201,12 @@ class ResendOTPSerializer(serializers.Serializer):
         send_verification_email_task.delay(
             user.person.first_name,
             user.person.last_name,
-            user.email,
+            user.phone_number,  # send OTP to phone number
             otp.code
         )
 
         return {
             "success": True,
-            "message": f"A new OTP has been sent to your {user.email}",
-            "data": {"email": user.email}
+            "message": f"A new OTP has been sent to your {user.phone_number}",
+            "data": {"phone_number": user.phone_number}
         }
