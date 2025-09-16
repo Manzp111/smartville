@@ -133,8 +133,7 @@ class EventsByVillageAPIView(APIView):
 
 
 
-from rest_framework.permissions import AllowAny
-
+from rest_framework.permissions import IsAuthenticated, AllowAny
 class EventViewSet(EventRolePermissionMixin, viewsets.ModelViewSet):
     queryset = Event.objects.all().order_by("-created_at")
     serializer_class = EventSerializer
@@ -142,11 +141,7 @@ class EventViewSet(EventRolePermissionMixin, viewsets.ModelViewSet):
     filterset_fields = ['status', 'village', 'date']
     search_fields = ['title', 'description', 'date']
     ordering = ['-created_at']
-
-
-
- 
-        
+      
        
     
 
