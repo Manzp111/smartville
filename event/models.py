@@ -18,7 +18,7 @@ class Event(models.Model):
     event_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     title = models.CharField(max_length=255)
     description = models.TextField()
-    location = models.CharField(max_length=255)
+    exact_place_of_village= models.CharField(max_length=255)
     date = models.DateField()
     start_time = models.TimeField()
     end_time = models.TimeField()
@@ -34,6 +34,7 @@ class Event(models.Model):
     image = models.ImageField(upload_to="events/images/", null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    village=models.ForeignKey(Location,on_delete=models.CASCADE)
 
     village = models.ForeignKey(Location, on_delete=models.CASCADE, related_name='events')
 

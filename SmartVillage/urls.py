@@ -8,11 +8,13 @@ from django.conf.urls.static import static
 urlpatterns = [
     path('admin/', admin.site.urls),
      path('', TemplateView.as_view(template_name='home/home.html'), name='home'),
-    path('user/',include('account.urls')),
+    path('',include('account.urls')),
     path('api/event/',include('event.urls')),
     path('api/complaint/', include('complaint.urls')),
     path('api/alert/', include('alert.urls')),
     path('',include('Location.urls')),
+    path('',include("Resident.urls")),
+    path('',include("vistor.urls")),
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     # Optional UI:
     path('api/schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),

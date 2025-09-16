@@ -11,11 +11,10 @@ def success_response(data=None, message="Success", status_code=200, pagination=N
         "message": message,
         "data": data
     }
-    
     if pagination:
         response_data["pagination"] = pagination
-        
     return Response(response_data, status=status_code)
+
 
 def error_response(message="Error", errors=None, status_code=400):
     """
@@ -29,6 +28,7 @@ def error_response(message="Error", errors=None, status_code=400):
         response_data["errors"] = errors
     return Response(response_data, status=status_code)
 
+
 def build_pagination_data(request, paginator, queryset):
     """
     Build pagination metadata for the response.
@@ -38,7 +38,7 @@ def build_pagination_data(request, paginator, queryset):
         
     page = paginator.page
     return {
-        "count": paginator.page.paginator.count,  # Total items
+        "count": paginator.page.paginator.count,  
         "current_page": page.number,
         "total_pages": page.paginator.num_pages,
         "page_size": paginator.page_size,
@@ -51,12 +51,8 @@ def build_pagination_data(request, paginator, queryset):
     }
 
 def _get_page_url(request, page_number):
-    """
-    Generate URL for a specific page with all existing query parameters.
-    """
     if not request:
         return None
-        
     params = request.query_params.copy()
     params['page'] = page_number
     return f"{request.build_absolute_uri(request.path)}?{urlencode(params)}"

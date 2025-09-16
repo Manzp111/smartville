@@ -1,12 +1,12 @@
 # accounts/views.py
 from drf_spectacular.utils import extend_schema, OpenApiExample
 from rest_framework.views import APIView
-from rest_framework.response import Response
 from rest_framework import status
 from django.contrib.auth import get_user_model
 from .password_serializers import PasswordResetRequestSerializer, PasswordResetSerializer
 from .models import OTP
 from .tasks import send_password_reset_email
+from event.utils import success_response, error_response  # import your utils
 import random
 
 User = get_user_model()
@@ -42,10 +42,7 @@ class PasswordResetRequestView(APIView):
             user = User.objects.get(email=email)
         except User.DoesNotExist:
             # Always return success to prevent email enumeration
-            return Response(
-                {"success": True, "message": "If this email exists, an OTP has been sent."},
-                status=status.HTTP_200_OK
-            )
+            return success_response(message="If this email exists, an OTP has been sent.")
 
         code = f"{random.randint(100000, 999999)}"
         OTP.objects.create(user=user, code=code, purpose="reset")
@@ -53,10 +50,7 @@ class PasswordResetRequestView(APIView):
         # Send OTP via Celery
         send_password_reset_email.delay(user.email, code)
 
-        return Response(
-            {"success": True, "message": "OTP has been sent to your email."},
-            status=status.HTTP_200_OK
-        )
+        return success_response(message="OTP has been sent to your email.")
 
 
 class PasswordResetView(APIView):
@@ -97,18 +91,18 @@ class PasswordResetView(APIView):
         try:
             user = User.objects.get(email=data["email"])
         except User.DoesNotExist:
-            return Response({"success": False, "message": "Invalid user."}, status=status.HTTP_400_BAD_REQUEST)
+            return error_response(message="Invalid user.", status_code=status.HTTP_400_BAD_REQUEST)
 
         try:
             otp_obj = OTP.objects.get(user=user, code=data["otp"], purpose="reset")
         except OTP.DoesNotExist:
-            return Response({"success": False, "message": "Invalid OTP."}, status=status.HTTP_400_BAD_REQUEST)
+            return error_response(message="Invalid OTP.", status_code=status.HTTP_400_BAD_REQUEST)
 
         if not otp_obj.is_valid():
-            return Response({"success": False, "message": "OTP expired."}, status=status.HTTP_400_BAD_REQUEST)
+            return error_response(message="OTP expired.", status_code=status.HTTP_400_BAD_REQUEST)
 
         user.set_password(data["new_password"])
         user.save()
         otp_obj.delete()
 
-        return Response({"success": True, "message": "Password has been reset successfully."}, status=status.HTTP_200_OK)
+        return success_response(message="Password has been reset successfully.")
