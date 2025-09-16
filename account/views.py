@@ -66,17 +66,19 @@ from .utils import generate_otp
                 "confirm_password": "Ng112233@",
                 "person": {
                     "first_name": "Gilbert",
-                    "last_name": "Nshimyimana",                    
+                    "last_name": "Nshimyimana",
                     "national_id": 123456789,
                     "gender": "male",
-                    
-                }
-
+                },
+                "location_id":"f138c017-e26d-418b-85c6-b2978e348e91"
+                
+                
             },
             request_only=True,
-            summary="Example request payload for registration using phone number"
+            summary="Example request payload for registration with location"
         )
     ],
+
 
     description="Create a new user account with phonenumber used in login ",
     summary="Register to be a user of system"
@@ -97,7 +99,9 @@ class RegisterView(APIView):
 
         
        
-        return error_response(errors=serializer.errors)
+        return error_response(
+            
+            errors=serializer.errors)
 
 
 # -----------------------------

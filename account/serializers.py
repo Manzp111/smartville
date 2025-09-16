@@ -57,54 +57,44 @@ class RegisterSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Password must not be the same as phone number.")
         return value
 
-    # Confirm password match
-    def validate(self, data):
-        if data["password"] != data["confirm_password"]:
-            raise serializers.ValidationError("Passwords do not match.")
-        return data
-
-    # Create user
     def create(self, validated_data):
         person_data = validated_data.pop("person")
         location_id = validated_data.pop("location_id")
-        validated_data.pop("confirm_password")
-        phone_number = validated_data.pop("phone_number")
+        password = validated_data.pop("password")
+        validated_data.pop("confirm_password", None)  # safe pop in case
 
-        with transaction.atomic():
-            # Create Person
-            person_data["phone_number"] = phone_number
-            person = Person.objects.create(
-                phone_number=validated_data["phone_number"], 
-                **person_data)
+        phone_number = person_data.get("phone_number") or validated_data.get("phone_number")
+        if Person.objects.filter(phone_number=phone_number).exists():
+            raise serializers.ValidationError({"phone_number": "This phone number is already registered."})
+        
+        # create Person
+        person = Person.objects.create(
+            phone_number=phone_number,
+            **person_data
+        )
 
-            # Create User
-            user = User.objects.create(
-                phone_number=phone_number,
-                person=person,
-                is_active=True,
-                is_verified=False
-            )
-            user.set_password(validated_data["password"])
-            user.save()
 
-            location = Location.objects.get(village_id=location_id)
-            Resident.objects.create(
-                person=person,
-                location=location,
-                added_by=user,  # optional, user created their own resident
-                status="PENDING",
-            )
+        # create User
+        user = User.objects.create(
+            phone_number=phone_number,
+            person=person,
+            is_active=True,
+            is_verified=False
+        )
+        user.set_password(password)
+        user.save()
 
-            # Generate OTP
-            # otp = generate_otp(user, purpose="verification")
-            # send_verification_email_task.delay(
-            #     user.person.first_name,
-            #     user.person.last_name,
-            #     user.phone_number,  
-            #     otp.code
-            # )
+        # create Resident linked to location
+        location = Location.objects.get(village_id=location_id)
+        Resident.objects.create(
+            person=person,
+            location=location,
+            added_by=user,
+            status="PENDING"
+        )
 
         return user
+
 
 
 # -----------------------------
