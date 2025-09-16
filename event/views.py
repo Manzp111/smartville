@@ -10,6 +10,108 @@ from .mixins import EventRolePermissionMixin
 from Resident.utils import get_resident_location
 from rest_framework import viewsets, filters, status
 from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from .models import Event
+from Location.models import Location
+from .serializers import EventSerializer
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from .models import Event
+from Location.models import Location
+from .serializers import EventSerializer
+
+
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from drf_spectacular.utils import extend_schema, OpenApiExample
+from .models import Event
+from Location.models import Location
+
+
+# views.py
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
+from drf_spectacular.types import OpenApiTypes
+
+from .models import Event
+from Location.models import Location
+from .serializers import EventSerializer,VillageEventsResponseSerializer
+
+
+
+class EventsByVillageAPIView(APIView):
+
+    @extend_schema(
+        request=None,  
+        parameters=[
+            OpenApiParameter(
+                name="village_id",
+                description="UUID of the village",
+                required=True,
+                type=OpenApiTypes.UUID,
+                location=OpenApiParameter.PATH,
+            ),
+        ],
+        responses={200: VillageEventsResponseSerializer},
+        examples=[
+            OpenApiExample(
+                "Village Events Response Example",
+                description="Example response showing events for a village",
+                value={
+                    "village_id": "ed0da226-2a9d-4689-96b1-685f135a8bc9",
+                    "village": "Gatenga",
+                    "events": [
+                        {
+                            "event_id": "1c2eaa4f-54af-4a87-9b16-4f1c545f3d54",
+                            "title": "Community Meeting",
+                            "description": "Village-wide meeting",
+                            "exact_place_of_village": "Near the market",
+                            "date": "2025-09-20",
+                            "start_time": "10:00:00",
+                            "end_time": "12:00:00",
+                            "organizer": 1,
+                            "status": "APPROVED",
+                            "image": None,
+                            "created_at": "2025-09-15T08:00:00Z",
+                            "updated_at": "2025-09-15T08:00:00Z",
+                            "village": "Gatenga, Kicukiro, Kigali"
+                        }
+                    ]
+                },
+                response_only=True
+            ),
+        ],
+    )
+    def get(self, request, village_id):
+        """
+        GET /api/event/village/<uuid:village_id>/events/
+        Returns all events for the given village_id (UUID).
+        """
+        try:
+            village = Location.objects.get(village_id=village_id)
+        except Location.DoesNotExist:
+            return Response({"detail": "Village not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        events = Event.objects.filter(village=village).order_by("-date")
+        event_serializer = EventSerializer(events, many=True)
+
+        response_data = {
+            "success":True,
+            "message":f"event o {village.village} of retrived well",
+            "village_id": str(village.village_id),
+            "village": village.village,
+            "events": event_serializer.data
+        }
+        return Response(response_data, status=status.HTTP_200_OK)
+
 
 
 
@@ -20,7 +122,15 @@ class EventViewSet(EventRolePermissionMixin,viewsets.ModelViewSet):
     filterset_fields = ['status', 'village', 'date'] 
     search_fields = ['title', 'description', 'date'] 
     ordering = ['-created_at']
+<<<<<<< HEAD
   
+=======
+ 
+        
+       
+    
+
+>>>>>>> main
     def perform_create(self, serializer):
         user = self.request.user
         try:
