@@ -2,7 +2,7 @@ from rest_framework import serializers
 from Resident.models import Resident
 from event.models import Event
 from Location.models import Location
-
+from account.serializers import UserListSerializer
 
 class ResidentSerializer(serializers.ModelSerializer):
     class Meta:
@@ -16,9 +16,13 @@ class EventSerializer(serializers.ModelSerializer):
         fields = ["event_id", "title", "description", "date", "start_time", "end_time", "status"]
 
 
+
+
+      
+
 class LocationSerializer(serializers.ModelSerializer):
-    leader_name = serializers.CharField(read_only=True)
+    leader= UserListSerializer()
 
     class Meta:
         model = Location
-        fields = ["village_id", "village", "cell", "sector", "district", "province", "leader_name"]
+        fields = ["village_id", "village", "cell", "sector", "district", "province", "leader"]

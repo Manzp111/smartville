@@ -11,7 +11,7 @@ from drf_spectacular.utils import extend_schema, OpenApiExample
 class VillageNewsAPIView(APIView):
 
     @extend_schema(
-        summary="Get Village Dashboard",
+        summary="Get Village info",
         description="Retrieve all related information of a specific village, including residents, events, and counts.",
         parameters=[
             OpenApiExample(
@@ -73,7 +73,7 @@ class VillageNewsAPIView(APIView):
         events = Event.objects.filter(village=village)
 
         # Serialize
-        resident_serializer = ResidentSerializer(residents, many=True)
+        # resident_serializer = ResidentSerializer(residents, many=True)
         event_serializer = EventSerializer(events, many=True)
         village_serializer = LocationSerializer(village)
 

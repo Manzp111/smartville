@@ -61,19 +61,24 @@ from .utils import generate_otp
         OpenApiExample(
             'Register Example',
             value={
-                "email": "gilbertnshimyimana130@gmail.com",
+                "phone_number": "0788730366",
                 "password": "Ng112233@",
                 "confirm_password": "Ng112233@",
                 "person": {
                     "first_name": "Gilbert",
-                    "last_name": "Nshimyimana",
+                    "last_name": "Nshimyimana",                    
+                    "national_id": 123456789,
+                    "gender": "male",
+                    
                 }
+
             },
             request_only=True,
-            summary="Example request payload for registration"
+            summary="Example request payload for registration using phone number"
         )
     ],
-    description="Create a new user account. Returns a message to verify email using OTP.",
+
+    description="Create a new user account with phonenumber used in login ",
     summary="Register to be a user of system"
 )
 class RegisterView(APIView):
@@ -85,10 +90,11 @@ class RegisterView(APIView):
         if serializer.is_valid():
             user = serializer.save()
             return success_response(
-                data={"email": user.email},
-                message=f"Account created. Verify email using OTP for {user.email}",
+                data={"phone_number": user.phone_number},
+                message=f"Account created",
                 status_code=status.HTTP_201_CREATED
             )
+
         
        
         return error_response(errors=serializer.errors)
