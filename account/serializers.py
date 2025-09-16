@@ -19,6 +19,19 @@ class PersonSerializer(serializers.ModelSerializer):
         model = Person
         fields = ["first_name", "last_name", "phone_number", "national_id", "gender", "person_type"]
 
+    def validate_national_id(self, value):
+        value_str = str(value)
+        # Must contain only digits
+        if not value_str.isdigit():
+            raise serializers.ValidationError("National ID must contain only digits.")
+        # Must be exactly 16 digits
+        if len(value_str) != 16:
+            raise serializers.ValidationError("National ID must be exactly 16 digits.")
+        # Must start with 1
+        if not value_str.startswith("1"):
+            raise serializers.ValidationError("National ID must start with 1.")
+        return value
+
 
 # -----------------------------
 # Register Serializer
@@ -79,7 +92,7 @@ class RegisterSerializer(serializers.ModelSerializer):
             phone_number=phone_number,
             person=person,
             is_active=True,
-            is_verified=False
+            is_verified=True,
         )
         user.set_password(password)
         user.save()

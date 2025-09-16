@@ -1,25 +1,25 @@
-# account/jwt_views.py
-from rest_framework import serializers, status
+from rest_framework import status
 from rest_framework.response import Response
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
+from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from drf_spectacular.utils import extend_schema, OpenApiExample
-from .models import User
-from event.utils import error_response,success_response
-from .error_responses import errorss__response
-from rest_framework_simplejwt.exceptions import AuthenticationFailed
-from rest_framework.exceptions import ValidationError
 from .jwt_serializers import CustomTokenObtainPairSerializer
+from rest_framework.exceptions import ValidationError
+from event.utils import success_response
+from .error_responses import errorss__response
 
 
+# -----------------------------
+# Custom Token Obtain (Login)
+# -----------------------------
 @extend_schema(
     request=CustomTokenObtainPairSerializer,
-    summary="User Login we used JWT authentication",
+    summary="User Login using phone number with JWT authentication",
     examples=[
         OpenApiExample(
             "Login Example",
             value={
-                "email": "gilbertnshimyimana130@gmail.com",
+                "phone_number": "0788730366",
                 "password": "Ng112233@"
             },
             request_only=True,
@@ -35,7 +35,7 @@ from .jwt_serializers import CustomTokenObtainPairSerializer
                     "refresh": "<refresh_token>",
                     "user": {
                         "id": 1,
-                        "email": "gilbertnshimyimana130@gmail.com",
+                        "phone_number": "0788730366",
                         "role": "resident"
                     }
                 }
@@ -44,31 +44,28 @@ from .jwt_serializers import CustomTokenObtainPairSerializer
             summary="Example successful login response"
         ),
         OpenApiExample(
-            "Email Not Verified",
+            "Phone Not Verified",
             value={
                 "status": "error",
-                "message": "Email not verified"
+                "message": "Phone number not verified"
             },
             response_only=True,
-            summary="Response if email is not verified"
+            summary="Response if phone number is not verified"
         )
-    ],
+    ]
 )
-
-
-
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
-def post(self, request, *args, **kwargs):
-    serializer = self.get_serializer(data=request.data)
-    try:
-        serializer.is_valid(raise_exception=True)
-        return success_response(
-            data=serializer.validated_data,
-            message="Login successful"
-        )
-    except ValidationError as e:
-        return errorss__response(errors=e.detail)
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        try:
+            serializer.is_valid(raise_exception=True)
+            return Response(serializer.validated_data,status=status.HTTP_200_OK
+            )
+        except ValidationError as e:
+            return errorss__response(errors=e.detail)
+
 # -----------------------------
 # Custom Token Refresh
 # -----------------------------
@@ -102,15 +99,11 @@ def post(self, request, *args, **kwargs):
         )
     ]
 )
-
-
-        
 class CustomTokenRefreshView(TokenRefreshView):
     serializer_class = TokenRefreshSerializer
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
-
         try:
             serializer.is_valid(raise_exception=True)
             return Response({

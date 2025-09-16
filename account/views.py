@@ -67,7 +67,7 @@ from .utils import generate_otp
                 "person": {
                     "first_name": "Gilbert",
                     "last_name": "Nshimyimana",
-                    "national_id": 123456789,
+                    "national_id": "1234567890123459",
                     "gender": "male",
                 },
                 "location_id":"f138c017-e26d-418b-85c6-b2978e348e91"
@@ -83,25 +83,43 @@ from .utils import generate_otp
     description="Create a new user account with phonenumber used in login ",
     summary="Register to be a user of system"
 )
-class RegisterView(APIView):
-    permission_classes = [AllowAny]
-    authentication_classes = []
 
-    def post(self, request):
+
+class RegisterView(APIView):
+    def post(self, request, *args, **kwargs):
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
-            return success_response(
-                data={"phone_number": user.phone_number},
-                message=f"Account created",
-                status_code=status.HTTP_201_CREATED
-            )
+            return Response({
+                "success": True,
+                "message": "User registered successfully",
+                "data": {
+                    "id": user.user_id,
+                    "phone_number": user.phone_number,
+                    "password":user.password,
+                    "role": getattr(user, "role", None)
+                }
+            }, status=status.HTTP_201_CREATED)
+        else:
+            # Extract meaningful error messages
+            def get_error_message(errors):
+                if isinstance(errors, dict):
+                    for value in errors.values():
+                        msg = get_error_message(value)
+                        if msg:
+                            return msg
+                elif isinstance(errors, list) and errors:
+                    return get_error_message(errors[0])
+                elif isinstance(errors, str):
+                    return errors
+                return "An error occurred"
 
-        
-       
-        return error_response(
-            
-            errors=serializer.errors)
+            return Response({
+                "success": False,
+                "message": get_error_message(serializer.errors),
+                "errors": serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+
 
 
 # -----------------------------
