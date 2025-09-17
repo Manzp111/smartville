@@ -35,18 +35,25 @@ from .models import Village
 
 from Village.serializers import LocationSerializer
 
+class PersonalSerializer(serializers.ModelSerializer):
+     class Meta:
+         model=Person
+         fields=["first_name","last_name","national_id"]
+
+    
+
 class LeaderSerializer(serializers.ModelSerializer):
-    full_name = serializers.SerializerMethodField()
+    person = PersonalSerializer()
     village= serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ['user_id', 'phone_number', 'email', 'role', 'is_active', 'full_name', 'village']
+        fields = ['user_id', 'phone_number', 'email', 'role', 'is_active', 'person', 'village']
 
-    def get_full_name(self, obj):
-        if obj.person:
-            return f"{obj.person.first_name} {obj.person.last_name}"
-        return None
+    # def get_full_name(self, obj):
+    #     if obj.person:
+    #         return f"{obj.person.first_name} {obj.person.last_name}"
+    #     return None
 
     # def get_village(self, obj):
     #     villages = obj.led_villages.all() if hasattr(obj, 'led_villages') else []

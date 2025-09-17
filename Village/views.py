@@ -183,16 +183,84 @@ class LeaderViewSet(mixins.RetrieveModelMixin,
     # List all leaders (GET /leaders/)
     # -------------------------------
     @extend_schema(
-        summary="List all village leaders",
+        summary="List all village leaderss",
         description="Retrieve a list of all village leaders. This endpoint is accessible to any user.",
+
         parameters=[
             OpenApiParameter(
-                name='village_id', 
+                name='page',
+                description='Page number for pagination (default: 1)',
+                required=False,
+                type=OpenApiTypes.INT,
+            ),
+            OpenApiParameter(
+                name='limit',
+                description='Number of results per page (default: 10)',
+                required=False,
+                type=OpenApiTypes.INT,
+            ),
+            OpenApiParameter(
+                name='sortBy',
+                description='Field to sort by (e.g. "created_at", "first_name")',
+                required=False,
+                type=str,
+            ),
+            OpenApiParameter(
+                name='sortOrder',
+                description='Sort order: "asc" or "desc"',
+                required=False,
+                type=str,
+            ),
+            OpenApiParameter(
+                name='search',
+                description='Search leaders by first name, last name, phone number, or village name and id',
+                required=False,
+                type=str,
+            ),
+            OpenApiParameter(
+                name='province',
+                description='Filter leaders by province',
+                required=False,
+                type=str,
+            ),
+            OpenApiParameter(
+                name='district',
+                description='Filter leaders by district',
+                required=False,
+                type=str,
+            ),
+            OpenApiParameter(
+                name='sector',
+                description='Filter leaders by sector',
+                required=False,
+                type=str,
+            ),
+            OpenApiParameter(
+                name='cell',
+                description='Filter leaders by cell',
+                required=False,
+                type=str,
+            ),
+            OpenApiParameter(
+                name='village_id',
                 description='Filter leaders by village ID',
                 required=False,
-                type=str
+                type=str,
             ),
-        ],
+            OpenApiParameter(
+                name='includeDeleted',
+                description='If true, include deleted leaders',
+                required=False,
+                type=OpenApiTypes.BOOL,
+            ),
+            OpenApiParameter(
+                name='deletedOnly',
+                description='If true, return only deleted leaders',
+                required=False,
+                type=OpenApiTypes.BOOL,
+            ),
+        ]
+    ,
         responses={
             200: OpenApiResponse(
                 response=LeaderSerializer(many=True),
@@ -235,26 +303,86 @@ class LeaderViewSet(mixins.RetrieveModelMixin,
         ]
     )
     def list(self, request):
-        """Get a list of all village leaders"""
-        village_id = request.query_params.get('village_id')
-        
-        if village_id:
-            try:
-                village = Village.objects.get(village_id=village_id)
-                leaders = User.objects.filter(role='leader', is_deleted=False, led_villages=village)
-            except Village.DoesNotExist:
-                leaders = User.objects.none()
-        else:
+            """List leaders with pagination, filters, and search"""
             leaders = self.get_queryset()
-        
-        serializer = self.get_serializer(leaders, many=True)
-        
-        return Response({
-            "status": "success",
-            "message": "Leaders retrieved successfully",
-            "count": len(serializer.data),
-            "data": serializer.data
-        }, status=status.HTTP_200_OK)
+
+            # --------------------
+            # Filtering parameters
+            # --------------------
+            province = request.query_params.get("province")
+            district = request.query_params.get("district")
+            sector = request.query_params.get("sector")
+            cell = request.query_params.get("cell")
+            village_id = request.query_params.get("village_id")
+            include_deleted = request.query_params.get("includeDeleted") == "true"
+            deleted_only = request.query_params.get("deletedOnly") == "true"
+
+            if not include_deleted and not deleted_only:
+                leaders = leaders.filter(is_deleted=False)
+            if deleted_only:
+                leaders = leaders.filter(is_deleted=True)
+
+            if province:
+                leaders = leaders.filter(led_villages__province__iexact=province)
+            if district:
+                leaders = leaders.filter(led_villages__district__iexact=district)
+            if sector:
+                leaders = leaders.filter(led_villages__sector__iexact=sector)
+            if cell:
+                leaders = leaders.filter(led_villages__cell__iexact=cell)
+            if village_id:
+                leaders = leaders.filter(led_villages__village_id=village_id)
+
+            # --------------------
+            # Search
+            # --------------------
+            search = request.query_params.get("search")
+            if search:
+                leaders = leaders.filter(
+                    Q(person__first_name__icontains=search) |
+                    Q(person__last_name__icontains=search) |
+                    Q(person__national_id__icontains=search) |
+                    Q(phone_number__icontains=search) |
+                    Q(led_villages__village__icontains=search)
+                )
+
+            # --------------------
+            # Sorting
+            # --------------------
+            sort_by = request.query_params.get("sortBy", "created_at")
+            sort_order = request.query_params.get("sortOrder", "desc")
+            if sort_order == "desc":
+                sort_by = f"-{sort_by}"
+            leaders = leaders.order_by(sort_by)
+
+            # --------------------
+            # Pagination
+            # --------------------
+            page = int(request.query_params.get("page", 1))
+            limit = int(request.query_params.get("limit", 10))
+            total = leaders.count()
+            total_pages = (total + limit - 1) // limit
+
+            start = (page - 1) * limit
+            end = start + limit
+            leaders = leaders[start:end]
+
+            # --------------------
+            # Response
+            # --------------------
+            serializer = self.get_serializer(leaders, many=True)
+            return Response({
+                "status": "success",
+                "message": "Leaders retrieved successfully",
+                "leaders": serializer.data,
+                "total": total,
+                 "meta":{
+                        "page": page,
+                        "limit": limit,
+                        "totalPages": total_pages
+                        
+                 },
+            }, status=status.HTTP_200_OK)
 
     # -------------------------------
     # Retrieve a specific leader (GET /leaders/{id}/)
