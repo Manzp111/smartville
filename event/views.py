@@ -100,6 +100,16 @@ class EventsByVillageAPIView(APIView):
         events = Event.objects.filter(village=village).order_by("-date")
         event_serializer = EventSerializer(events, many=True)
 
+        leader_data = None
+        if village.leader:
+            leader_data = {
+                "user_id": village.leader.user_id,
+                "first_name": village.leader.person.first_name,
+                "last_name": village.leader.person.last_name,
+                "email": village.leader.email,
+                "phone_number": village.leader.person.phone_number,
+            }
+
         response_data = {
             "success":True,
             "message":f"event of {village.village} of retrived well",
@@ -112,13 +122,8 @@ class EventsByVillageAPIView(APIView):
                 "cell":village.cell,
                 "villages_name":village.village,
                 "village_id": str(village.village_id),
-                "village_leader":{
-                    "user_id":village.leader.user_id,
-                    "first_name":village.leader.person.first_name,
-                    "last_name":village.leader.person.last_name,
-                    "email":village.leader.email,
-                    "phone_number":village.leader.person.phone_number,
-                },
+                "village_leader":leader_data,
+         
             },
             "events": event_serializer.data
             }

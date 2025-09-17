@@ -38,8 +38,7 @@ INSTALLED_APPS = [
     'event',
     'Resident',
     'vistor',
-    "villagesInfo",
-    "VillageAnnouncement",
+    "villagesInfo",  
     "VolunteerActivity",
 ]
 
