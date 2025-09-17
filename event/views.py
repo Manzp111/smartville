@@ -150,7 +150,7 @@ class EventViewSet(EventRolePermissionMixin, viewsets.ModelViewSet):
         try:
             # Get the resident linked to this user
             resident = Resident.objects.get(person__user=user, is_deleted=False)
-            village = resident.Village
+            village = resident.village
         except Resident.DoesNotExist:
             village = None  # or raise an error if you want to enforce a resident
         serializer.save(organizer=user, village=village)

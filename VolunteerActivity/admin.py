@@ -12,6 +12,7 @@ class VolunteerParticipationInline(admin.TabularInline):
 @admin.register(VolunteeringEvent)
 class VolunteeringEventAdmin(admin.ModelAdmin):
     list_display = (
+        "id",
         "title",
         "village",
         "date",

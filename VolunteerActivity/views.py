@@ -11,11 +11,12 @@ from .serializers import (
 )
 from Village.models import Village
 from Resident.models import Resident
+from .mixins import EventAccessPermission
 
 
-
-class VolunteeringEventViewSet(viewsets.ModelViewSet):
+class VolunteeringEventViewSet(EventAccessPermission, viewsets.ModelViewSet):
     queryset = VolunteeringEvent.objects.all()
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_serializer_class(self):
         if self.action in ["create", "update", "partial_update"]:
@@ -23,28 +24,29 @@ class VolunteeringEventViewSet(viewsets.ModelViewSet):
         return VolunteeringEventSerializer
 
     def perform_create(self, serializer):
-        """
-        When a resident creates an event:
-        - Organizer = logged in user
-        - Village = the resident's own Village
-        """
         user = self.request.user
         try:
             resident = Resident.objects.get(person=user.person, is_deleted=False)
         except Resident.DoesNotExist:
             raise ValueError("User is not linked to a resident")
 
-        serializer.save(organizer=user, village=resident.Village)
+        serializer.save(organizer=user, village=resident.village)
 
     def get_queryset(self):
         """
-        Control access:
+        Control access for list view:
         - Admin → all events
         - Leader → events in villages they lead
         - Resident → only events in their own village
+        For retrieve (detail) → no restriction
         """
         user = self.request.user
 
+        if self.action == "retrieve":
+            # Allow viewing any event by ID
+            return VolunteeringEvent.objects.all()
+
+        # Restrict list view based on role
         if user.role == "admin":
             return VolunteeringEvent.objects.all()
 
@@ -54,16 +56,14 @@ class VolunteeringEventViewSet(viewsets.ModelViewSet):
         if user.role == "resident":
             try:
                 resident = Resident.objects.get(person=user.person, is_deleted=False)
-                return VolunteeringEvent.objects.filter(village=resident.Village)
+                return VolunteeringEvent.objects.filter(village=resident.village)
             except Resident.DoesNotExist:
                 return VolunteeringEvent.objects.none()
 
         return VolunteeringEvent.objects.none()
 
 
-# -----------------------------
-# Volunteer Participation ViewSet
-# -----------------------------
+
 class VolunteerParticipationViewSet(viewsets.ModelViewSet):
     queryset = VolunteerParticipation.objects.all()
     serializer_class = VolunteerParticipationSerializer
