@@ -67,6 +67,13 @@ class EventSerializer(serializers.ModelSerializer):
     class Meta:
         model = Event
         fields = "__all__"
+        read_only_fields = ["organizer", "village"]
+    def validate(self, attrs):
+        # Check if user is authenticated during validation
+        user = self.context['request'].user
+        if not user.is_authenticated:
+            raise serializers.ValidationError("Authentication required")
+        return attrs
 
 class VillageEventsResponseSerializer(serializers.Serializer):
     village_id = serializers.UUIDField()

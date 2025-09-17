@@ -44,10 +44,14 @@ class VolunteeringEventSerializer(serializers.ModelSerializer):
             "approved_volunteers_count",
             "is_full",
         ]
+        
 
 
 # Serializer for creating events (so organizer/village auto-fill)
 class VolunteeringEventCreateSerializer(serializers.ModelSerializer):
+    village = LocationSerializer(read_only=True)
     class Meta:
         model = VolunteeringEvent
-        fields = ["title", "description", "date", "capacity"]
+        fields = ["title", "description", "date", "capacity","village"]
+        read_only_fields = ["village"]
+        
