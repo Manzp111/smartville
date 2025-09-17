@@ -2,7 +2,8 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
-
+from rest_framework.pagination import PageNumberPagination
+from django_filters.rest_framework import DjangoFilterBackend
 from .models import VolunteeringEvent, VolunteerParticipation
 from .serializers import (
     VolunteeringEventSerializer,
@@ -147,3 +148,25 @@ class VolunteerParticipationViewSet(viewsets.ModelViewSet):
         participation.status = "REJECTED"
         participation.save()
         return Response({"detail": "Volunteer rejected."})
+
+
+class VillageEventViewSet(viewsets.ViewSet):
+     
+    def list(self, request, village_id=None):
+        """List volunteering events of a specific village"""
+        try:
+            village = Village.objects.get(village_id=village_id)
+        except Village.DoesNotExist:
+            return Response({"detail": "Village not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        volunter_activity = VolunteeringEvent.objects.filter(village=village)
+        paginator = PageNumberPagination()
+        paginator.page_size = request.query_params.get("page_size", 10)  # allow custom page size
+        result_page = paginator.paginate_queryset(volunter_activity, request)
+        serializer = VolunteeringEventSerializer(volunter_activity, many=True)
+        return Response({
+            "status": "success",
+            "message": f"Events for village {village.village}",
+            "count": len(serializer.data),
+            "data": serializer.data
+        })
