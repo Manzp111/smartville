@@ -1,11 +1,11 @@
 from django.test import TestCase
-from account.models import User, Person, Location
+from account.models import User, Person, Village
 
 class UserModelTest(TestCase):
 
     def setUp(self):
-        # Create a Location
-        self.Location = Location.objects.create(
+        # Create a Village
+        self.Village = Village.objects.create(
             province="Kigali",
             district="Gasabo",
             sector="Kacyiru",
@@ -18,7 +18,7 @@ class UserModelTest(TestCase):
             national_id=123456789,
             first_name="John",
             last_name="Doe",
-            Location=self.Location,
+            Village=self.Village,
             date_of_birth="1990-01-01",
             gender="male",
             person_type="resident",
@@ -65,7 +65,7 @@ class UserModelTest(TestCase):
             person=self.person,
             username="struser"
         )
-        self.assertEqual(str(user), f"{self.person.first_name}-{self.person.Location.village}_{user.role}")
+        self.assertEqual(str(user), f"{self.person.first_name}-{self.person.Village.village}_{user.role}")
 
     def test_str_method_superuser_without_person(self):
         superuser = User.objects.create_superuser(

@@ -155,6 +155,13 @@ class User(AbstractBaseUser, PermissionsMixin):
         if self.person:
             return f"{self.user_id}-{self.person.first_name}-{self.person.last_name}_{self.role}"
         return f"{self.phone_number}_{self.role}"
+    
+    def save(self, *args, **kwargs):
+        # Update Person phone number whenever User phone_number changes
+        if self.person and self.phone_number != self.person.phone_number:
+            self.person.phone_number = self.phone_number
+            self.person.save()
+        super().save(*args, **kwargs)
 
 
 

@@ -39,4 +39,5 @@ class Resident(models.Model):
         self.save()
 
     def __str__(self):
-        return f"{self.person} @ {self.Location.village}"
+       return f"{self.person} @ {self.village.village}"
+

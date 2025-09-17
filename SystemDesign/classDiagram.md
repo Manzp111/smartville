@@ -11,7 +11,7 @@ classDiagram
         +string last_name
         +date date_of_birth
         +string gender
-        +string Location
+        +string Village
         +string phone_number
         +date registration_date
         +string person_type
@@ -60,7 +60,7 @@ classDiagram
         +date date
         +time start_time
         +time end_time
-        +string Location
+        +string Village
         +string status
         +datetime created_at
         +datetime updated_at
@@ -84,7 +84,7 @@ classDiagram
         +UUID complaint_id
         +Person complainant
         +text description
-        +string Location
+        +string Village
         +string status
         +boolean is_anonymous
         +datetime date_submitted
@@ -99,7 +99,7 @@ classDiagram
         +string description
         +string alert_type
         +string urgency_level
-        +string Location
+        +string Village
         +string specific_location
         +boolean is_anonymous
         +boolean allow_sharing

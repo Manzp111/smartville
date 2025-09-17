@@ -13,7 +13,7 @@ TABLE(Person, "Person", #FFDDCC) {
     last_name : varchar
     date_of_birth : date
     gender : enum
-    Location : varchar
+    Village : varchar
     national_id : varchar
     person_type : enum
     phone_number : varchar
@@ -49,7 +49,7 @@ TABLE(Event, "Event", #FFFFCC) {
     + event_id : UUID <<PK>>
     title : varchar
     description : text
-    Location : varchar
+    Village : varchar
     date : date
     start_time : time
     end_time : time
@@ -74,7 +74,7 @@ TABLE(Complaint, "Complaint", #FFCCCC) {
     complainant_id : UUID <<FK>>
     description : text
     is_anonymous : boolean
-    Location : varchar
+    Village : varchar
     date_submitted : datetime
     status : enum
 }
@@ -87,7 +87,7 @@ TABLE(CommunityAlert, "Community Alert", #CCFFFF) {
     alert_type : enum
     urgency_level : enum
     status : enum
-    Location : varchar
+    Village : varchar
     specific_location : varchar
     incident_date : date
     incident_time : time

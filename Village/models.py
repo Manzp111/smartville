@@ -1,7 +1,7 @@
 from django.db import models
 from django.conf import settings
 import uuid
-
+from django.core.exceptions import ValidationError
 
 class Village(models.Model):
     village_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
@@ -10,7 +10,7 @@ class Village(models.Model):
     sector = models.CharField(max_length=50)
     cell = models.CharField(max_length=50)
     village = models.CharField(max_length=50)
-    leader = models.ForeignKey(
+    leader = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         null=True,
         blank=True,
@@ -18,6 +18,8 @@ class Village(models.Model):
         related_name='led_villages',
         default="5aa97242-7ac2-4096-9a78-2b6c21abef62" 
     )
+    class Meta:
+        db_table = 'Location_location'
 
     def get_full_address(self):
         return f"{self.village}, {self.cell}, {self.sector}, {self.district}, {self.province}"
@@ -25,6 +27,11 @@ class Village(models.Model):
     def __str__(self):
         return self.get_full_address()
     
-    @property
-    def resident_count(self):
-        return self.residents.filter(is_deleted=False).count()
+    def clean(self):
+        """Ensure a user is leader of only one village."""
+        if self.leader:
+            # Check if this user is already a leader of another village
+            existing = Village.objects.filter(leader=self.leader).exclude(pk=self.pk)
+            if existing.exists():
+                raise ValidationError(f"{self.leader} is already the leader of another village.")
+    

@@ -11,7 +11,7 @@ class UserAdmin(admin.ModelAdmin):
 class PersonAdmin(admin.ModelAdmin):
     list_display = ('first_name', 'last_name', 'phone_number')
     search_fields = ('first_name', 'last_name', 'phone_number')
-    # list_filter = ('Location',)
+    # list_filter = ('Village',)
     ordering = ('first_name',)
 
 @admin.register(OTP)

@@ -18,11 +18,11 @@
   <button type="submit">Search</button>
 </form>
 
-{% if Location.village %}
-  <h3>Location Information</h3>
-  <p><strong>Village:</strong> {{ Location.village }}</p>
-  <p><strong>Sector:</strong> {{ Location.sector }}</p>
-  <p><strong>District:</strong> {{ Location.district }}</p>
+{% if Village.village %}
+  <h3>Village Information</h3>
+  <p><strong>Village:</strong> {{ Village.village }}</p>
+  <p><strong>Sector:</strong> {{ Village.sector }}</p>
+  <p><strong>District:</strong> {{ Village.district }}</p>
 {% elif request.GET.lat and request.GET.lon %}
   <p style="color:red;">No matching village found for the given coordinates.</p>
 {% endif %}

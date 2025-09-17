@@ -105,6 +105,6 @@ A4 --> UC_ViewAlerts
 A4 --> UC_ApproveEvent
 
 ' --- System ---
-A5 --> UC_RegisterResident : "Detect Location & notify leader"
+A5 --> UC_RegisterResident : "Detect Village & notify leader"
 
 @enduml

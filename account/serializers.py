@@ -97,11 +97,15 @@ class RegisterSerializer(serializers.ModelSerializer):
         user.set_password(password)
         user.save()
 
-        # create Resident linked to Location
-        Location = Village.objects.get(village_id=location_id)
+        try:
+            village_instance = Village.objects.get(village_id=location_id)
+        except Village.DoesNotExist:
+            raise serializers.ValidationError({"location_id": "Village does not exist"})
+
+        # Create Resident linked to Village
         Resident.objects.create(
             person=person,
-            Location=Location,
+            village=village_instance,  # must match the field name in Resident model
             added_by=user,
             status="PENDING"
         )

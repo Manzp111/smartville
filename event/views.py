@@ -166,7 +166,7 @@ class EventViewSet(EventRolePermissionMixin, viewsets.ModelViewSet):
                 value={
                      "title": "umuganda",
                     "description": "hari umuganda usoza ukwezi kuwa 30 kanama",
-                    "_excat location": "uzabera kukagari",
+                    "_excat Village": "uzabera kukagari",
                     "date": "2025-09-13",
                     "start_time": "16:53:40.782Z",
                     "end_time": "16:53:40.782Z",
@@ -289,11 +289,11 @@ class EventViewSet(EventRolePermissionMixin, viewsets.ModelViewSet):
         examples=[
             OpenApiExample(
                 "Partial Update Example",
-                description="Update only the event title and Location",
+                description="Update only the event title and Village",
                 value={
                         "title": "umuganda",
                         "description": " umuganda w'ukwezi",
-                        "Location": "Huye",
+                        "Village": "Huye",
                         "date": "2025-09-12",
                         "start_time": "09:00:00",
                         "end_time": "17:00:00",
@@ -314,7 +314,7 @@ class EventViewSet(EventRolePermissionMixin, viewsets.ModelViewSet):
                     "data": {
                         "title": "umuganda",
                         "description": " umuganda w'ukwezi",
-                        "Location": "Huye",
+                        "Village": "Huye",
                         "date": "2025-09-12",
                         "start_time": "09:00:00",
                         "end_time": "17:00:00",

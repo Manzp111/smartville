@@ -4,10 +4,10 @@ from Resident.models import Resident
 
 def get_resident_location(user):
     """
-    Returns the Location object associated with the logged-in user.
+    Returns the Village object associated with the logged-in user.
     """
     try:
         resident = Resident.objects.get(person=user.person, has_account=True, is_deleted=False)
-        return resident.Location
+        return resident.Village
     except Resident.DoesNotExist:
         return None

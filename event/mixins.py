@@ -39,11 +39,11 @@ class EventRolePermissionMixin:
         if user.role == "admin":
             return qs
 
-        Location = get_resident_location(user)
+        Village = get_resident_location(user)
 
         if user.role == "leader":
             # Leader sees all events in their village
-            return qs.filter(village=Location) if Location else qs.none()
+            return qs.filter(village=Village) if Village else qs.none()
 
         if user.role == "resident":
             # Resident sees only events they organized
@@ -58,12 +58,12 @@ class EventRolePermissionMixin:
         """
         obj = super().get_object()
         user = self.request.user
-        Location = get_resident_location(user)
+        Village = get_resident_location(user)
 
         if not user.is_authenticated:
             raise PermissionDenied("You must be logged in.")
 
-        if user.role == "leader" and obj.village != Location:
+        if user.role == "leader" and obj.village != Village:
             raise PermissionDenied("Access denied to events from another village.")
 
         if user.role == "resident" and obj.organizer != user:
@@ -73,12 +73,12 @@ class EventRolePermissionMixin:
 
     def perform_create(self, serializer):
         user = self.request.user
-        Location = get_resident_location(user)
+        Village = get_resident_location(user)
 
         if user.role in ["resident", "leader"]:
-            if not Location:
+            if not Village:
                 raise PermissionDenied("You must be assigned to a village to create events.")
-            serializer.save(organizer=user, village=Location)
+            serializer.save(organizer=user, village=Village)
         elif user.role == "admin":
             serializer.save()
         else:
@@ -86,12 +86,12 @@ class EventRolePermissionMixin:
 
     def perform_destroy(self, instance):
         user = self.request.user
-        Location = get_resident_location(user)
+        Village = get_resident_location(user)
 
         if user.role == "resident" and instance.organizer != user:
             raise PermissionDenied("You can only delete your own events.")
 
-        if user.role == "leader" and instance.village != Location:
+        if user.role == "leader" and instance.village != Village:
             raise PermissionDenied("You cannot delete events from another village.")
 
         # Admin can delete anything
@@ -112,8 +112,8 @@ class EventRolePermissionMixin:
 
         # Optional: Leader can update status only in their village
         if user.role == "leader" and "status" in serializer.validated_data:
-            Location = get_resident_location(user)
-            if instance.village != Location:
+            Village = get_resident_location(user)
+            if instance.village != Village:
                 raise PermissionDenied("You cannot update status for events outside your village.")
 
         # Residents can update other fields only for their own events
