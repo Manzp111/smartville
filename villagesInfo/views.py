@@ -82,7 +82,7 @@ class VillageNewsAPIView(APIView):
 
             "success": True,
             "message": f"all information of {village.village} retrived well",
-            "data ": {
+            "data": {
             "total_residents": residents.count(),
             "total_events": events.count(),        
             "village": village_serializer.data,
