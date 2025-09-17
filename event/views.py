@@ -166,7 +166,7 @@ class EventViewSet(EventRolePermissionMixin, viewsets.ModelViewSet):
                 value={
                      "title": "umuganda",
                     "description": "hari umuganda usoza ukwezi kuwa 30 kanama",
-                    "_excat Village": "uzabera kukagari",
+                    "exact_place_of_village": "uzabera kukagari",
                     "date": "2025-09-13",
                     "start_time": "16:53:40.782Z",
                     "end_time": "16:53:40.782Z",

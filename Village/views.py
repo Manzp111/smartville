@@ -143,79 +143,200 @@ class LocationViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 ########## managing leaders
-from rest_framework import viewsets, status
-from rest_framework.response import Response
-from rest_framework.permissions import BasePermission
-from rest_framework.decorators import action
-from drf_spectacular.utils import extend_schema, OpenApiExample
-from account.models import User
-from .models import Village
-from .serializers import LeaderSerializer, PromoteToLeaderSerializer, UpdateLeaderSerializer
-
-# -------------------------------
-# Custom permission: System Admin only
-# -------------------------------
-
-
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, mixins
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from drf_spectacular.utils import extend_schema, OpenApiExample
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from drf_spectacular.utils import extend_schema, OpenApiExample, OpenApiResponse, OpenApiParameter
+from django.shortcuts import get_object_or_404
+from django.db import transaction
+
 from .serializers import LeaderSerializer, PromoteToLeaderSerializer, UpdateLeaderSerializer
-from account.models import User
+from account.models import User, Person
 from Village.models import Village
 from .permissions import IsSystemAdmin
 
 
-class LeaderViewSet(viewsets.ModelViewSet):
+class LeaderViewSet(mixins.RetrieveModelMixin,
+                    mixins.ListModelMixin,
+                    mixins.UpdateModelMixin,
+                    mixins.DestroyModelMixin,
+                    viewsets.GenericViewSet):
     """
     ViewSet for managing village leaders.
-    Only system admins can perform these actions.
+    System admins can perform all actions except retrieving leaders (allowed for any authenticated user).
     """
-    queryset = User.objects.filter(role='leader')
+    queryset = User.objects.filter(role='leader', is_deleted=False)
     serializer_class = LeaderSerializer
-    permission_classes = [IsSystemAdmin]
+    
+    def get_permissions(self):
+        """
+        Instantiates and returns the list of permissions that this view requires.
+        """
+        if self.action in ['retrieve', 'list']:
+            permission_classes = [AllowAny]  # Allow anyone to view leaders
+        else:
+            permission_classes = [IsSystemAdmin]  # Only system admins for other actions
+        return [permission() for permission in permission_classes]
 
     # -------------------------------
-    # Promote resident to leader
+    # List all leaders (GET /leaders/)
     # -------------------------------
     @extend_schema(
-        summary="Promote a resident to leader",
-        description="System admin assigns a resident to a village and promotes them to leader.",
-        request=PromoteToLeaderSerializer,
-        responses={200: LeaderSerializer},
+        summary="List all village leaders",
+        description="Retrieve a list of all village leaders. This endpoint is accessible to any user.",
+        parameters=[
+            OpenApiParameter(
+                name='village_id', 
+                description='Filter leaders by village ID',
+                required=False,
+                type=str
+            ),
+        ],
+        responses={
+            200: OpenApiResponse(
+                response=LeaderSerializer(many=True),
+                description="List of leaders retrieved successfully"
+            )
+        },
         examples=[
             OpenApiExample(
-                "Promote Resident Example",
+                "Success Response Example",
                 value={
-                    "user_id": "a1b2c3d4-5678-9012-3456-7890abcdef12",
-                    "village_id": "v1w2x3y4-5678-9012-3456-abcdef123456"
+                    "status": "success",
+                    "message": "Leaders retrieved successfully",
+                    "count": 2,
+                    "data": [
+                        {
+                            "user_id": "a1b2c3d4-5678-9012-3456-7890abcdef12",
+                            "first_name": "John",
+                            "last_name": "Doe",
+                            "phone_number": "250781234567",
+                            "email": "john.doe@example.com",
+                            "role": "leader",
+                            "is_active": True,
+                            "village": "Kigali, Nyarugenge, Nyamirambo, Rwezamenyo"
+                        },
+                        {
+                            "user_id": "b2c3d4e5-6789-0123-4567-890abcdef123",
+                            "first_name": "Jane",
+                            "last_name": "Smith",
+                            "phone_number": "250782345678",
+                            "email": "jane.smith@example.com",
+                            "role": "leader",
+                            "is_active": True,
+                            "village": "Kigali, Gasabo, Kimihurura, Gishushu"
+                        }
+                    ]
                 },
-                request_only=True,
+                response_only=True,
+                status_codes=['200']
             )
         ]
     )
-    @action(detail=False, methods=['post'], url_path='promote')
-    def promote_resident(self, request):
-        serializer = PromoteToLeaderSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        leader = serializer.save()
+    def list(self, request):
+        """Get a list of all village leaders"""
+        village_id = request.query_params.get('village_id')
+        
+        if village_id:
+            try:
+                village = Village.objects.get(village_id=village_id)
+                leaders = User.objects.filter(role='leader', is_deleted=False, led_villages=village)
+            except Village.DoesNotExist:
+                leaders = User.objects.none()
+        else:
+            leaders = self.get_queryset()
+        
+        serializer = self.get_serializer(leaders, many=True)
+        
         return Response({
-            "status": "resident promoted to leader",
-            "leader": LeaderSerializer(leader).data
-        })
+            "status": "success",
+            "message": "Leaders retrieved successfully",
+            "count": len(serializer.data),
+            "data": serializer.data
+        }, status=status.HTTP_200_OK)
 
     # -------------------------------
-    # Update leader info
+    # Retrieve a specific leader (GET /leaders/{id}/)
     # -------------------------------
     @extend_schema(
-        summary="Update leader info",
-        description="System admin can update leader's details (name, phone, email, active status) using PATCH.",
-        request=UpdateLeaderSerializer,
-        responses={200: LeaderSerializer},
+        summary="Retrieve a specific leader",
+        description="Get detailed information about a specific village leader by ID. This endpoint is accessible to any user.",
+        responses={
+            200: OpenApiResponse(
+                response=LeaderSerializer,
+                description="Leader details retrieved successfully"
+            ),
+            404: OpenApiResponse(
+                description="Leader not found"
+            )
+        },
         examples=[
             OpenApiExample(
-                "Update Leader Info Example",
+                "Success Response Example",
+                value={
+                    "status": "success",
+                    "message": "Leader retrieved successfully",
+                    "data": {
+                        "user_id": "a1b2c3d4-5678-9012-3456-7890abcdef12",
+                        "first_name": "John",
+                        "last_name": "Doe",
+                        "phone_number": "250781234567",
+                        "email": "john.doe@example.com",
+                        "role": "leader",
+                        "is_active": True,
+                        "village": "Kigali, Nyarugenge, Nyamirambo, Rwezamenyo",
+                        "created_at": "2023-10-15T08:30:45Z",
+                        "updated_at": "2023-11-20T14:22:18Z"
+                    }
+                },
+                response_only=True,
+                status_codes=['200']
+            )
+        ]
+    )
+    def retrieve(self, request, pk=None):
+        """Get details of a specific leader"""
+        leader = self.get_object()
+        serializer = self.get_serializer(leader)
+        
+        return Response({
+            "status": "success",
+            "message": "Leader retrieved successfully",
+            "data": serializer.data
+        }, status=status.HTTP_200_OK)
+
+    # -------------------------------
+    # Disable PUT method (not allowed)
+    # -------------------------------
+    def update(self, request, *args, **kwargs):
+        return Response({
+            "status": "error",
+            "message": "PUT method is not allowed. Use PATCH for partial updates."
+        }, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    # -------------------------------
+    # Partial update leader (PATCH /leaders/{id}/)
+    # -------------------------------
+    @extend_schema(
+        summary="Partially update a leader",
+        description="System admin can partially update a leader's information. Only provided fields will be updated.",
+        request=UpdateLeaderSerializer,
+        responses={
+            200: OpenApiResponse(
+                response=LeaderSerializer,
+                description="Leader updated successfully"
+            ),
+            400: OpenApiResponse(
+                description="Bad request - validation error"
+            ),
+            404: OpenApiResponse(
+                description="Leader not found"
+            )
+        },
+        examples=[
+            OpenApiExample(
+                "Request Example",
                 value={
                     "first_name": "John",
                     "last_name": "Doe",
@@ -224,33 +345,242 @@ class LeaderViewSet(viewsets.ModelViewSet):
                     "is_active": True
                 },
                 request_only=True,
+            ),
+            OpenApiExample(
+                "Success Response Example",
+                value={
+                    "status": "success",
+                    "message": "Leader updated successfully",
+                    "data": {
+                        "user_id": "a1b2c3d4-5678-9012-3456-7890abcdef12",
+                        "first_name": "John",
+                        "last_name": "Doe",
+                        "phone_number": "250781234567",
+                        "email": "john.doe@example.com",
+                        "role": "leader",
+                        "is_active": True,
+                        "village": "Kigali, Nyarugenge, Nyamirambo, Rwezamenyo"
+                    }
+                },
+                response_only=True,
+                status_codes=['200']
             )
         ]
     )
-    @action(detail=True, methods=['patch'], url_path='update-info')
-    def update_info(self, request, pk=None):
+    def partial_update(self, request, *args, **kwargs):
+        """Partially update a leader's information"""
         leader = self.get_object()
         serializer = UpdateLeaderSerializer(leader, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response({
-            "status": "leader info updated",
-            "leader": LeaderSerializer(leader).data
-        })
+        
+        try:
+            with transaction.atomic():
+                serializer.save()
+                return Response({
+                    "status": "success",
+                    "message": "Leader updated successfully",
+                    "data": LeaderSerializer(leader).data
+                }, status=status.HTTP_200_OK)
+                
+        except Exception as e:
+            return Response({
+                "status": "error",
+                "message": str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
 
     # -------------------------------
-    # Remove leader from village (demote to resident)
+    # Delete a leader (soft delete) (DELETE /leaders/{id}/)
+    # -------------------------------
+    @extend_schema(
+        summary="Delete a leader",
+        description="System admin can soft delete a leader. The leader will be marked as deleted but not removed from the database.",
+        responses={
+            200: OpenApiResponse(
+                description="Leader soft deleted successfully"
+            ),
+            404: OpenApiResponse(
+                description="Leader not found"
+            )
+        },
+        examples=[
+            OpenApiExample(
+                "Success Response Example",
+                value={
+                    "status": "success",
+                    "message": "Leader soft deleted successfully",
+                    "data": {
+                        "user_id": "a1b2c3d4-5678-9012-3456-7890abcdef12",
+                        "first_name": "John",
+                        "last_name": "Doe",
+                        "deleted_at": "2023-12-01T10:30:45Z"
+                    }
+                },
+                response_only=True,
+                status_codes=['200']
+            )
+        ]
+    )
+    def destroy(self, request, *args, **kwargs):
+        """Soft delete a leader"""
+        leader = self.get_object()
+        leader.soft_delete()
+        
+        return Response({
+            "status": "success",
+            "message": "Leader soft deleted successfully",
+            "data": {
+                "user_id": str(leader.user_id),
+                "first_name": leader.person.first_name if leader.person else None,
+                "last_name": leader.person.last_name if leader.person else None,
+                "deleted_at": leader.deleted_at
+            }
+        }, status=status.HTTP_200_OK)
+
+    # -------------------------------
+    # Promote resident to leader (POST /leaders/promote/)
+    # -------------------------------
+    @extend_schema(
+        summary="Promote a resident to leader",
+        description="System admin assigns a resident to a village and promotes them to leader.",
+        request=PromoteToLeaderSerializer,
+        responses={
+            200: OpenApiResponse(
+                response=LeaderSerializer,
+                description="Resident successfully promoted to leader"
+            ),
+            400: OpenApiResponse(
+                description="Bad request - validation error or user already a leader"
+            ),
+            404: OpenApiResponse(
+                description="User or village not found"
+            )
+        },
+        examples=[
+            OpenApiExample(
+                "Request Example",
+                value={
+                    "user_id": "a1b2c3d4-5678-9012-3456-7890abcdef12",
+                    "village_id": "v1w2x3y4-5678-9012-3456-abcdef123456"
+                },
+                request_only=True,
+            ),
+            OpenApiExample(
+                "Success Response Example",
+                value={
+                    "status": "success",
+                    "message": "Resident promoted to leader successfully",
+                    "data": {
+                        "user_id": "a1b2c3d4-5678-9012-3456-7890abcdef12",
+                        "first_name": "John",
+                        "last_name": "Doe",
+                        "phone_number": "250781234567",
+                        "email": "john.doe@example.com",
+                        "role": "leader",
+                        "village": "Kigali, Nyarugenge, Nyamirambo, Rwezamenyo"
+                    }
+                },
+                response_only=True,
+                status_codes=['200']
+            )
+        ]
+    )
+    @action(detail=False, methods=['post'], url_path='promote')
+    def promote_resident(self, request):
+        serializer = PromoteToLeaderSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        try:
+            with transaction.atomic():
+                leader = serializer.save()
+                
+                return Response({
+                    "status": "success",
+                    "message": "Resident promoted to leader successfully",
+                    "data": LeaderSerializer(leader).data
+                }, status=status.HTTP_200_OK)
+                
+        except Exception as e:
+            return Response({
+                "status": "error",
+                "message": str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+    @extend_schema(exclude=True)
+    def update(self, request, *args, **kwargs):
+        return Response(
+            {"detail": "PUT method is not allowed."},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED
+        )
+
+    # -------------------------------
+    # Remove leader from village (demote to resident) (DELETE /leaders/{id}/remove/)
     # -------------------------------
     @extend_schema(
         summary="Remove leader from village",
         description="System admin can remove a leader from their village, reverting their role to resident.",
-        responses={200: OpenApiExample("Leader removed", value={"status": "leader removed"})}
+        responses={
+            200: OpenApiResponse(
+                description="Leader removed successfully"
+            ),
+            404: OpenApiResponse(
+                description="Leader not found"
+            )
+        },
+        examples=[
+            OpenApiExample(
+                "Success Response Example",
+                value={
+                    "status": "success",
+                    "message": "Leader removed successfully and reverted to resident",
+                    "data": {
+                        "user_id": "a1b2c3d4-5678-9012-3456-7890abcdef12",
+                        "first_name": "John",
+                        "last_name": "Doe",
+                        "phone_number": "250781234567",
+                        "role": "resident",
+                        "previous_village": "Kigali, Nyarugenge, Nyamirambo, Rwezamenyo"
+                    }
+                },
+                response_only=True,
+                status_codes=['200']
+            )
+        ]
     )
     @action(detail=True, methods=['delete'], url_path='remove')
     def remove_leader(self, request, pk=None):
         leader = self.get_object()
-        leader.role = 'resident'
-        leader.save()
-        # Remove from village
-        Village.objects.filter(leader=leader).update(leader=None)
-        return Response({"status": "leader removed"}, status=status.HTTP_200_OK)
+        
+        try:
+            with transaction.atomic():
+                # Get village info before removal for response
+                village_info = None
+                try:
+                    village = Village.objects.get(leader=leader)
+                    village_info = str(village)
+                except Village.DoesNotExist:
+                    pass
+                
+                # Update leader role to resident
+                leader.role = 'resident'
+                leader.save()
+                
+                # Remove from village
+                Village.objects.filter(leader=leader).update(leader=None)
+                
+                return Response({
+                    "status": "success", 
+                    "message": "Leader removed successfully and reverted to resident",
+                    "data": {
+                        "user_id": str(leader.user_id),
+                        "first_name": leader.person.first_name if leader.person else None,
+                        "last_name": leader.person.last_name if leader.person else None,
+                        "phone_number": leader.phone_number,
+                        "role": leader.role,
+                        "previous_village": village_info
+                    }
+                }, status=status.HTTP_200_OK)
+                
+        except Exception as e:
+            return Response({
+                "status": "error",
+                "message": str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
