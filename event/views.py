@@ -22,7 +22,8 @@ from rest_framework import status
 from .models import Event
 from .serializers import EventSerializer
 from rest_framework.permissions import AllowAny
-
+from rest_framework.pagination import PageNumberPagination
+from django_filters.rest_framework import DjangoFilterBackend
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -339,3 +340,33 @@ class EventViewSet(EventRolePermissionMixin, viewsets.ModelViewSet):
         return super().perform_update(request, *args, **kwargs)
     
 
+
+class EventViewSetlist(viewsets.ViewSet):
+     
+    def list(self, request, village_id=None):
+        """List volunteering events of a specific village"""
+        try:
+            village = Village.objects.get(village_id=village_id)
+        except Village.DoesNotExist:
+            return Response({"detail": "Village not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        volunter_activity = Event.objects.filter(village=village)
+        paginator = PageNumberPagination()
+        paginator.page_size = request.query_params.get("page_size", 10)  # allow custom page size
+        result_page = paginator.paginate_queryset(volunter_activity, request)
+        serializer = EventSerializer(volunter_activity, many=True)
+        return Response({
+            "status": "success",
+            "message": f"Events for village {village.village}",
+            
+            "count": len(serializer.data),
+            "village":{
+                "village_id":village.village_id,
+                "province":village.province,
+                "district":village.district,
+                "sector":village.sector,
+                "cell":village.cell,
+                "village":village.village,
+            },
+            "data": serializer.data
+        })
