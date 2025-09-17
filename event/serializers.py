@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from .models import Event
 from account.serializers import PersonSerializer
-from Location.serializers import LocationSerializer
+from Village.serializers import LocationSerializer
 from account.models import User
 # from account.serializers import UserListSerializer
 

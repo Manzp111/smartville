@@ -3,10 +3,10 @@ from .models import Resident
 
 @admin.register(Resident)
 class ResidentAdmin(admin.ModelAdmin):
-    list_display = ('person', 'location__village',  'added_by', 'status', 'created_at', 'updated_at')
-    search_fields = ('person__first_name', 'person__last_name', 'location__village', 'location__cell', 'location__sector')
-    list_filter = ('has_account', 'is_deleted', 'location__province', 'location__district', 'location__sector')
-    ordering = ('location__province', 'location__district', 'location__sector', 'person__first_name')
+    list_display = ('person', 'village__village',  'added_by', 'status', 'created_at', 'updated_at')
+    search_fields = ('person__first_name', 'person__last_name', 'village__village', 'village__cell', 'village__sector')
+    list_filter = ('has_account', 'is_deleted', 'village__province', 'village__district', 'village__sector')
+    ordering = ('village__province', 'village__district', 'village__sector', 'person__first_name')
 
     actions = ['soft_delete_residents', 'restore_residents']
 

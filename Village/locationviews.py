@@ -15,7 +15,7 @@ from drf_spectacular.types import OpenApiTypes
 from shapely.geometry import Point, shape
 import shapefile, os
 from event.utils import success_response, error_response
-from .models import Location
+from .models import Village
 from Resident.models import Resident
 from Resident.serializers import ResidentSerializer
 from rest_framework.permissions import IsAuthenticated
@@ -47,13 +47,13 @@ class LocatePointAPIView(APIView):
         responses={
             200: OpenApiResponse(
                 response=OpenApiTypes.OBJECT,
-                description="Village location found successfully",
+                description="Village Village found successfully",
                 examples=[
                     OpenApiExample(
                         "Success Response",
                         value={
                             "success": True,
-                            "message": "Location found successfully",
+                            "message": "Village found successfully",
                             "data": {
                                 "province": "Amajyaruguru",
                                 "district": "Burera",
@@ -82,7 +82,7 @@ class LocatePointAPIView(APIView):
                 ]
             ),
             404: OpenApiResponse(
-                description="Location Not Found",
+                description="Village Not Found",
                 examples=[
                     OpenApiExample(
                         "Not Found Error",
@@ -102,7 +102,7 @@ class LocatePointAPIView(APIView):
                         "Server Error",
                         value={
                             "success": False,
-                            "message": "Failed to process location data",
+                            "message": "Failed to process Village data",
                             "errors": "Shapefile not found or corrupted"
                         }
                     )
@@ -130,7 +130,7 @@ class LocatePointAPIView(APIView):
             # Check if shapefile exists
             if not os.path.exists(shp_path):
                 return error_response(
-                    message="Location data not available",
+                    message="Village data not available",
                     errors="Shapefile not found",
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
@@ -154,7 +154,7 @@ class LocatePointAPIView(APIView):
             if village_info:
                 return success_response(
                     data=village_info,
-                    message="Location found successfully",
+                    message="Village found successfully",
                     status_code=status.HTTP_200_OK
                 )
             else:
@@ -165,7 +165,7 @@ class LocatePointAPIView(APIView):
 
         except Exception as e:
             return error_response(
-                message="Failed to process location data",
+                message="Failed to process Village data",
                 errors=str(e),
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
@@ -211,8 +211,8 @@ class JoinVillageByCoordinatesAPIView(APIView):
                             "data": {
                                 "id": "uuid-of-resident",
                                 "person": "uuid-of-person",
-                                "location": {
-                                    "village_id": "uuid-of-location",
+                                "Village": {
+                                    "village_id": "uuid-of-Village",
                                     "province": "Amajyaruguru",
                                     "district": "Burera",
                                     "sector": "Kinyababa",
@@ -236,7 +236,7 @@ class JoinVillageByCoordinatesAPIView(APIView):
                         "Missing Fields Example",
                         value={
                             "success": False,
-                            "message": "Missing required location fields: latitude, longitude",
+                            "message": "Missing required Village fields: latitude, longitude",
                             "errors": None
                         }
                     ),
@@ -284,7 +284,7 @@ class JoinVillageByCoordinatesAPIView(APIView):
                         "Server Error Example",
                         value={
                             "success": False,
-                            "message": "Failed to process location data",
+                            "message": "Failed to process Village data",
                             "errors": "Shapefile not found or corrupted"
                         }
                     )
@@ -308,7 +308,7 @@ class JoinVillageByCoordinatesAPIView(APIView):
         BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         shp_path = os.path.join(BASE_DIR, "Village level boundary", "RWA_adm5.shp")
         if not os.path.exists(shp_path):
-            return error_response("Location data not available", errors="Shapefile not found", status_code=500)
+            return error_response("Village data not available", errors="Shapefile not found", status_code=500)
 
         sf = shapefile.Reader(shp_path)
         point = Point(longitude, latitude)
@@ -337,11 +337,11 @@ class JoinVillageByCoordinatesAPIView(APIView):
         existing_resident = Resident.objects.filter(person=person, is_deleted=False).first()
         if existing_resident:
             return error_response(
-                f"You are already a resident in {existing_resident.location.village} village in {existing_resident.location.sector} sector",
+                f"You are already a resident in {existing_resident.Village.village} village in {existing_resident.Village.sector} sector",
                 status_code=409
             )
 
-        location, _ = Location.objects.get_or_create(
+        Village, _ = Village.objects.get_or_create(
             province=village_info["province"],
             district=village_info["district"],
             sector=village_info["sector"],
@@ -352,17 +352,17 @@ class JoinVillageByCoordinatesAPIView(APIView):
 
         resident = Resident.objects.create(
             person=person,
-            location=location,
+            Village=Village,
             added_by=user,
             status="PENDING"
         )
 
-        if location.leader:
+        if Village.leader:
             notify_village_leader_new_resident.delay(
-                location.leader.email,
+                Village.leader.email,
                 f"{person.first_name} {person.last_name}",
-                location.village,
-                location.get_full_address()
+                Village.village,
+                Village.get_full_address()
             )
 
         serializer = ResidentSerializer(resident)

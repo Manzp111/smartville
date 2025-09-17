@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from Location.models import Location
+from Village.models import Village
 from Resident.models import Resident
 from event.models import Event
 from .serializers import ResidentSerializer, EventSerializer, LocationSerializer
@@ -64,12 +64,12 @@ class VillageNewsAPIView(APIView):
     )
     def get(self, request, village_id):
         try:
-            village = Location.objects.get(village_id=village_id)
-        except Location.DoesNotExist:
+            village = Village.objects.get(village_id=village_id)
+        except Village.DoesNotExist:
             return Response({"success": False, "message": "Village not found"}, status=status.HTTP_404_NOT_FOUND)
 
         # Query related data
-        residents = Resident.objects.filter(location=village, is_deleted=False)
+        residents = Resident.objects.filter(village=village, is_deleted=False)
         events = Event.objects.filter(village=village)
 
         # Serialize

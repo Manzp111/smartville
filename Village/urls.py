@@ -3,10 +3,11 @@ from . import views
 from django.urls import path, include
 from .locationviews import LocatePointAPIView,JoinVillageByCoordinatesAPIView
 from rest_framework.routers import DefaultRouter
-from .views import LocationViewSet
+from .views import LocationViewSet,LeaderViewSet
 
 router = DefaultRouter()
-router.register(r'view/locations', LocationViewSet, basename='location')
+router.register(r'view/locations', LocationViewSet, basename='Village')
+router.register(r'leaders', LeaderViewSet, basename='leader')
 
 
 urlpatterns = [

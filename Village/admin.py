@@ -1,7 +1,6 @@
 from django.contrib import admin
-from .models import Location
-
-@admin.register(Location)
+from .models import Village
+@admin.register(Village)
 class LocationAdmin(admin.ModelAdmin):
     list_display = ("village_id","village","cell", "sector", "district", "province", "leader")
     search_fields = ("village", "sector", "district", "province", "leader__email")

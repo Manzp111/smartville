@@ -116,3 +116,21 @@ class CustomTokenRefreshView(TokenRefreshView):
                 "status": "error",
                 "message": "Invalid refresh token"
             }, status=status.HTTP_400_BAD_REQUEST)
+
+
+from rest_framework import status, permissions
+from .jwt_serializers import CustomTokenObtainPairSerializer, UserSerializer
+from rest_framework.views import APIView
+
+
+class MeView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        serializer = UserSerializer(user)
+        return Response({
+            "status": "success",
+            "message": "User profile retrieved",
+            "data": serializer.data
+        }, status=status.HTTP_200_OK)

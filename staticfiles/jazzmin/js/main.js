@@ -29,7 +29,7 @@
          Set the currently active menu item based on the current url, or failing that, find the parent
          item from the breadcrumbs
          */
-        const url = window.location.pathname;
+        const url = window.Village.pathname;
         const $breadcrumb = $('.breadcrumb a').last();
         const $link = $('a[href="' + url + '"]');
         const $parent_link = $('a[href="' + $breadcrumb.attr('href') + '"]');

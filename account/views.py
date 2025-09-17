@@ -75,7 +75,7 @@ from .utils import generate_otp
                 
             },
             request_only=True,
-            summary="Example request payload for registration with location"
+            summary="Example request payload for registration with Village"
         )
     ],
 
@@ -302,7 +302,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
                                 "person": {
                                     "first_name": "Gilbert",
                                     "last_name": "Nshimyimana",
-                                    "location": {
+                                    "Village": {
                                         "province": "Kigali",
                                         "district": "Gasabo",
                                         "sector": "Kimihurura",
@@ -333,7 +333,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
     # ---------------- CREATE ----------------
     @extend_schema(
         summary="Create a new user",
-        description="Admin can create a new user with associated person and location info.",
+        description="Admin can create a new user with associated person and Village info.",
         request=UserListSerializer,
         examples=[
             OpenApiExample(
@@ -346,7 +346,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
                     "person": {
                         "first_name": "manzp",
                         "last_name": "prience",
-                        "location": {
+                        "Village": {
                             "province": "Kigali",
                             "district": "Gasabo",
                             "sector": "Kimihurura",
@@ -374,7 +374,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
                         "person": {
                             "first_name": "manzp",
                             "last_name": "prience",
-                            "location": {
+                            "Village": {
                                 "province": "Kigali",
                                 "district": "Gasabo",
                                 "sector": "Kimihurura",
@@ -425,7 +425,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
                         "person": {
                             "first_name": "Gilbert",
                             "last_name": "Nshimyimana",
-                            "location": {
+                            "Village": {
                                 "province": "Kigali",
                                 "district": "Gasabo",
                                 "sector": "Kimihurura",
@@ -512,7 +512,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
                         "person": {
                             "first_name": "Gilbert",
                             "last_name": "Nshimyimana",
-                            "location": {
+                            "Village": {
                                 "province": "Kigali",
                                 "district": "Gasabo",
                                 "sector": "Kimihurura",

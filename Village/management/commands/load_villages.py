@@ -1,9 +1,9 @@
 from django.core.management.base import BaseCommand
-from Location.models import Location
+from Village.models import Village
 import shapefile
 
 class Command(BaseCommand):
-    help = "Load all villages from shapefile into Location model"
+    help = "Load all villages from shapefile into Village model"
 
     def handle(self, *args, **kwargs):
         try:
@@ -11,7 +11,7 @@ class Command(BaseCommand):
             records=sf.records()
             start_id=0
             for i,record in enumerate(records[start_id:],start=start_id):
-                location, created = Location.objects.get_or_create(
+                Village, created = Village.objects.get_or_create(
                     province=record['NAME_1'],
                     district=record['NAME_2'],
                     sector=record['NAME_3'],
@@ -19,9 +19,9 @@ class Command(BaseCommand):
                     village=record['NAME_5']
                 )
                 if created:
-                    self.stdout.write(self.style.SUCCESS(f"Created location: {location.village}"))
+                    self.stdout.write(self.style.SUCCESS(f"Created Village: {Village.village}"))
                 else:
-                    self.stdout.write(self.style.WARNING(f"Location already exists: {location.village}"))
+                    self.stdout.write(self.style.WARNING(f"Village already exists: {Village.village}"))
             self.stdout.write(self.style.SUCCESS("All villages loaded successfully!"))
         except Exception as e:
             self.stdout.write(self.style.ERROR(f"Error loading villages: {str(e)}"))

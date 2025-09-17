@@ -16,7 +16,7 @@ sequenceDiagram
     %% Visitor browsing
     Visitor->>System: View village info by selection
     System-->>Visitor: Show public village info
-    Visitor->>GPS: Share current location
+    Visitor->>GPS: Share current Village
     GPS-->>System: Send village coordinates
     System-->>Visitor: Show nearby village info/events
 
@@ -53,4 +53,4 @@ sequenceDiagram
     WebSocket-->>Resident: Push request update
 
     %% Optional: Event recommendations
-    System-->>Resident: Show recommended events (location & interest based)
+    System-->>Resident: Show recommended events (Village & interest based)

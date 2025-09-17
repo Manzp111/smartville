@@ -8,7 +8,7 @@ from .tasks import send_verification_email_task
 from django.utils import timezone
 from pytz import timezone as pytz_timezone
 from event.utils import success_response, error_response
-from Location.models import Location
+from Village.models import Village
 from Resident.models import Resident
 
 # -----------------------------
@@ -97,11 +97,15 @@ class RegisterSerializer(serializers.ModelSerializer):
         user.set_password(password)
         user.save()
 
-        # create Resident linked to location
-        location = Location.objects.get(village_id=location_id)
+        try:
+            village_instance = Village.objects.get(village_id=location_id)
+        except Village.DoesNotExist:
+            raise serializers.ValidationError({"location_id": "Village does not exist"})
+
+        # Create Resident linked to Village
         Resident.objects.create(
             person=person,
-            location=location,
+            village=village_instance,  # must match the field name in Resident model
             added_by=user,
             status="PENDING"
         )
