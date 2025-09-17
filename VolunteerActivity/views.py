@@ -13,9 +13,7 @@ from Village.models import Village
 from Resident.models import Resident
 
 
-# -----------------------------
-# Volunteering Event ViewSet
-# -----------------------------
+
 class VolunteeringEventViewSet(viewsets.ModelViewSet):
     queryset = VolunteeringEvent.objects.all()
 
