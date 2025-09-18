@@ -3,7 +3,11 @@ from django.db import models
 from account.models import User
 from Village.models import Village
 import uuid
-
+STATUS_CHOICES = [
+        ("PENDING", "Pending Approval"),
+        ("APPROVED", "Approved"),
+        ("REJECTED", "Rejected"),
+    ]
 class VolunteeringEvent(models.Model):
     id = models.UUIDField(default=uuid.uuid4,primary_key=True, unique=True, editable=False)
     title = models.CharField(max_length=200)
@@ -26,11 +30,7 @@ class VolunteeringEvent(models.Model):
 
 
 class VolunteerParticipation(models.Model):
-    STATUS_CHOICES = [
-        ("PENDING", "Pending Approval"),
-        ("APPROVED", "Approved"),
-        ("REJECTED", "Rejected"),
-    ]
+
 
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     event = models.ForeignKey(VolunteeringEvent, on_delete=models.CASCADE)
