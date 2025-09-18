@@ -355,7 +355,7 @@ class EventViewSetlist(viewsets.ViewSet):
         paginator.page_size = request.query_params.get("page_size", 10)  # allow custom page size
         result_page = paginator.paginate_queryset(volunter_activity, request)
         serializer = EventSerializer(volunter_activity, many=True)
-        return Response({
+        return paginator.get_paginated_response({
             "status": "success",
             "message": f"Events for village {village.village}",
             

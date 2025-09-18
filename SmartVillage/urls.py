@@ -14,6 +14,7 @@ urlpatterns = [
     path('',include("Resident.urls")),
     path('',include('villagesInfo.urls')),
     path("",include("VolunteerActivity.urls")),
+    path("",include("team_contact.urls")),
     # path('',include("vistor.urls")),
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     # Optional UI:

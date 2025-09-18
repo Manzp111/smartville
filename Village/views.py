@@ -374,9 +374,9 @@ class LeaderViewSet(mixins.RetrieveModelMixin,
             return Response({
                 "status": "success",
                 "message": "Leaders retrieved successfully",
-                "leaders": serializer.data,
-                "total": total,
+                "data": serializer.data,
                  "meta":{
+                        "total": total,
                         "page": page,
                         "limit": limit,
                         "totalPages": total_pages

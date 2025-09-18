@@ -40,6 +40,8 @@ class PersonalSerializer(serializers.ModelSerializer):
          model=Person
          fields=["first_name","last_name","national_id"]
 
+
+
     
 
 class LeaderSerializer(serializers.ModelSerializer):
