@@ -1,27 +1,8 @@
 from rest_framework import serializers
 from .models import VolunteeringEvent, VolunteerParticipation
-from Village.models import Village
-from account.models import User
-from django.utils import timezone
-
-
-class LocationSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Village
-        fields = ["province", "district", "sector", "cell", "village"]
-
-
-class UserSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ["user_id", "phone_number", "role"]
-
-############
-
-from rest_framework import serializers
-from .models import VolunteeringEvent, VolunteerParticipation
 from Village.serializers import LocationSerializer
 from account.serializers import UserListSerializer
+from django.utils import timezone
 
 
 class VolunteeringEventCreateSerializer(serializers.ModelSerializer):
@@ -29,17 +10,29 @@ class VolunteeringEventCreateSerializer(serializers.ModelSerializer):
         model = VolunteeringEvent
         fields = [
             'title', 'description', 'date', 'start_time', 'end_time',
-            'capacity', 'location', 'skills_required'
+            'capacity', 'village', 'location', 'skills_required', 'category'
         ]
+        # extra_kwargs = {
+        #     "title": {"example": "Community Clean-Up"},
+        #     "description": {"example": "A local clean-up event in our village park."},
+        #     "date": {"example": "2025-09-25"},
+        #     "start_time": {"example": "08:00:00"},
+        #     "end_time": {"example": "12:00:00"},
+        #     "capacity": {"example": 20},
+        #     "village": {"example": 1},  # ID of an existing Village
+        #     "location": {"example": "Village Park"},
+        #     "skills_required": {"example": "Teamwork, Cleaning"},
+        #     "category": {"example": "Community & Social"},
+        # }
 
     def validate_date(self, value):
-        if value < serializers.DateTimeField().to_representation(timezone.now().date()):
+        if value < timezone.now().date():
             raise serializers.ValidationError("Event date cannot be in the past")
         return value
 
 
 class VolunteeringEventSerializer(serializers.ModelSerializer):
-    organizer = UserSerializer(read_only=True)
+    organizer = UserListSerializer(read_only=True)
     village = LocationSerializer(read_only=True)
     approved_volunteers_count = serializers.ReadOnlyField()
     is_full = serializers.ReadOnlyField()
@@ -54,12 +47,12 @@ class VolunteeringEventSerializer(serializers.ModelSerializer):
         fields = [
             'volunteer_id', 'title', 'description', 'date', 'start_time', 'end_time',
             'capacity', 'village', 'organizer', 'status', 'rejection_reason',
-            'location', 'skills_required', 'created_at', 'updated_at',
+            'location', 'skills_required', 'category', 'created_at', 'updated_at',
             'approved_volunteers_count', 'is_full', 'available_spots',
             'is_joinable', 'is_upcoming', 'user_participation_status',
             'can_manage'
         ]
-        read_only_fields = ['status', 'rejection_reason', 'approved_at']
+        read_only_fields = ['status', 'rejection_reason', 'created_at', 'updated_at']
 
     def get_user_participation_status(self, obj):
         request = self.context.get('request')
@@ -75,14 +68,14 @@ class VolunteeringEventSerializer(serializers.ModelSerializer):
 
 
 class VolunteerParticipationSerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
+    user = UserListSerializer(read_only=True)
     event = VolunteeringEventSerializer(read_only=True)
     can_manage = serializers.SerializerMethodField()
 
     class Meta:
         model = VolunteerParticipation
         fields = [
-            'volunteer_id', 'user', 'event', 'status', 'notes',
+            'participation_id', 'user', 'event', 'status', 'notes',
             'joined_at', 'updated_at', 'approved_at', 'can_manage'
         ]
         read_only_fields = ['user', 'event', 'joined_at', 'updated_at', 'approved_at']
@@ -101,4 +94,4 @@ class VolunteerParticipationCreateSerializer(serializers.ModelSerializer):
 
 
 class EventApprovalSerializer(serializers.Serializer):
-    rejection_reason = serializers.CharField(required=False, allow_blank=True)
+    rejection_reason = serializers.CharField(required=False, allow_blank=True, max_length=500)
