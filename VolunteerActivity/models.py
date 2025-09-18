@@ -25,7 +25,7 @@ class VolunteeringEvent(models.Model):
     ]
 
     
-    volunteer_id = models.UUIDField(default=uuid.uuid4, editable=False,unique=True)
+    volunteer_id = models.UUIDField(primary_key=True,default=uuid.uuid4, editable=False,unique=True)
     title = models.CharField(max_length=200)
     description = models.TextField()
     date = models.DateField()
@@ -114,7 +114,7 @@ class VolunteerParticipation(models.Model):
         ("CANCELLED", "Cancelled"),
     ]
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    participation_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="event_participations")
     event = models.ForeignKey(VolunteeringEvent, on_delete=models.CASCADE, related_name="participations")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="PENDING")

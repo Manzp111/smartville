@@ -82,7 +82,7 @@ class VolunteerParticipationSerializer(serializers.ModelSerializer):
     class Meta:
         model = VolunteerParticipation
         fields = [
-            'id', 'user', 'event', 'status', 'notes',
+            'volunteer_id', 'user', 'event', 'status', 'notes',
             'joined_at', 'updated_at', 'approved_at', 'can_manage'
         ]
         read_only_fields = ['user', 'event', 'joined_at', 'updated_at', 'approved_at']

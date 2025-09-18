@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'vistor',
     "villagesInfo",  
     "VolunteerActivity",
+    'team_contact',
 ]
 
 # MIDDLEWARE (CorsMiddleware moved near top)
