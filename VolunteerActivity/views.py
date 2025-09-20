@@ -412,13 +412,13 @@ class VillageEventViewSet(viewsets.ViewSet):
         queryset = VolunteeringEvent.objects.filter(village=village)
 
         # Role-based filtering
-        if user.role == "resident":
-            queryset = queryset.filter(organizer=user)
-        elif user.role == "leader":
-            if village.leader != user:
-                return Response({"status": "error", "message": "You do not have access to this village"}, status=status.HTTP_403_FORBIDDEN)
+        # if user.role == "resident":
+        #     queryset = queryset.filter(organizer=user)
+        # elif user.role == "leader":
+        #     if village.leader != user:
+        #         return Response({"status": "error", "message": "You do not have access to this village"}, status=status.HTTP_403_FORBIDDEN)
 
-        queryset = queryset.order_by("-date", "-start_time")
+        # queryset = queryset.order_by("-date", "-start_time")
 
         # Pagination
         paginator = VolunteeringEventPagination()

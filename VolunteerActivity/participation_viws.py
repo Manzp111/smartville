@@ -11,7 +11,7 @@ from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
 from drf_spectacular.types import OpenApiTypes
 
 from .models import VolunteerParticipation, VolunteeringEvent
-from .participation_serializers import VolunteerParticipationSerializer, VolunteerParticipationCreateSerializer
+from .participation_serializers import VolunteerParticipationSerializer, VolunteerParticipationCreateSerializer,BulkParticipationUpdateSerializer
 
 
 # ---------------- Custom Paginator ----------------
@@ -121,15 +121,32 @@ class VolunteerParticipationViewSet(viewsets.ModelViewSet):
             event = serializer.validated_data['event']
 
             # ---------------- Validation ----------------
+            # Check if user already joined
             if event.participations.filter(user=user).exists():
-                return Response({"success": False, "message": "You cannot join this event twice."}, status=400)
+                return Response(
+                    {"success": False, "message": "You cannot join this event twice."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
-            user_village_ids = [res.village.id for res in getattr(user, 'residencies', user.residencies.none()).all()]
-            if event.village.id not in user_village_ids:
-                return Response({"success": False, "message": "You cannot join an event outside your village."}, status=400)
+            # Check user's villages
+            user_village_ids = []
+            if getattr(user, 'person', None):
+                residencies = user.person.residencies.filter(is_deleted=False)
+                user_village_ids = [str(r.village.village_id) for r in residencies]
 
+            # Compare as string to avoid UUID vs str mismatch
+            if str(event.village.village_id) not in user_village_ids:
+                return Response(
+                    {"success": False, "message": "You cannot join an event outside your village."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Event must be approved
             if event.status != 'APPROVED':
-                return Response({"success": False, "message": "You cannot join an event that is not approved."}, status=400)
+                return Response(
+                    {"success": False, "message": "You cannot join an event that is not approved."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
             # ---------------- Create Participation ----------------
             with transaction.atomic():
@@ -144,16 +161,14 @@ class VolunteerParticipationViewSet(viewsets.ModelViewSet):
                 "success": True,
                 "message": "Participation request created successfully",
                 "data": output_serializer.data
-            }, status=201)
+            }, status=status.HTTP_201_CREATED)
 
         except serializers.ValidationError as e:
             detail = e.detail
 
-            # If dict → get first error
+            # Extract first error message
             if isinstance(detail, dict):
                 detail = list(detail.values())[0]
-
-            # If still a list → take the first element
             if isinstance(detail, list):
                 detail = detail[0]
 
@@ -162,18 +177,26 @@ class VolunteerParticipationViewSet(viewsets.ModelViewSet):
                 "message": str(detail)
             }, status=status.HTTP_400_BAD_REQUEST)
 
-
     # ---------------- LIST PARTICIPATIONS ----------------
+    STATUS_CHOICES = ['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED']
+
     @extend_schema(
         summary="List participations",
-        description="Retrieve all participations with pagination. Filters: volunteer_id, village_id",
+        description="Retrieve all participations with pagination. Filters: volunteer_id, village_id, status",
         parameters=[
             OpenApiParameter(name='volunteer_id', description='Filter by volunteering event UUID', required=False, type=OpenApiTypes.UUID),
             OpenApiParameter(name='village_id', description='Filter by village UUID', required=False, type=OpenApiTypes.UUID),
+            OpenApiParameter(
+                name='status', 
+                description='Filter by participation status',
+                required=False, 
+                type=OpenApiTypes.STR,
+                enum=STATUS_CHOICES  # dropdown values
+            ),
             OpenApiParameter(name='page', description='Page number for pagination', required=False, type=OpenApiTypes.INT),
             OpenApiParameter(name='limit', description='Number of items per page', required=False, type=OpenApiTypes.INT),
         ],
-        responses={200: VolunteerParticipationSerializer}
+        responses={200: VolunteerParticipationSerializer(many=True)}
     )
     def list(self, request, *args, **kwargs):
         """
@@ -183,13 +206,15 @@ class VolunteerParticipationViewSet(viewsets.ModelViewSet):
         """
         volunteer_id = request.query_params.get('volunteer_id')
         village_id = request.query_params.get('village_id')
-
+        status = request.query_params.get('status')
         queryset = self.queryset
 
         if volunteer_id:
             queryset = queryset.filter(event__volunteer_id=volunteer_id)
         if village_id:
             queryset = queryset.filter(event__village__id=village_id)
+        if status:
+            queryset = queryset.filter(status=status.upper())
 
         page = self.paginate_queryset(queryset)
         if page is not None:
@@ -201,34 +226,51 @@ class VolunteerParticipationViewSet(viewsets.ModelViewSet):
 
     # ---------------- APPROVE OR REJECT SINGLE PARTICIPATION ----------------
     @extend_schema(
-        summary="Approve or reject a participation",
-        description="Organizer, village leader, or admin can approve/reject a participation. PATCH `{'status':'APPROVED'}` or `{'status':'REJECTED'}`",
-        request=None
+        request=BulkParticipationUpdateSerializer,
+        responses={
+            200: VolunteerParticipationSerializer(many=True),
+            400: {"description": "Validation error"},
+            403: {"description": "Permission denied"}
+        },
+        description="Approve or reject one or multiple participations. Provide a list of participation_ids and choose a status."
     )
     def partial_update(self, request, *args, **kwargs):
         """
-        Approve or reject a single participation.
+        Approve or reject one or multiple participations.
         """
-        participation = self.get_object()
+        serializer = BulkParticipationUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        participation_ids = serializer.validated_data['participation_ids']
+        new_status = serializer.validated_data['status']
         user = request.user
-        new_status = request.data.get('status')
 
-        if not (participation.event.organizer == user or participation.event.village.leader == user or user.role == 'admin'):
-            return Response({"success": False, "message": "You do not have permission to update this participation."}, status=403)
+        participations = VolunteerParticipation.objects.filter(participation_id__in=participation_ids)
 
-        if new_status not in ['APPROVED', 'REJECTED']:
-            return Response({"success": False, "message": "Status must be 'APPROVED' or 'REJECTED'."}, status=400)
+        # Permission check
+        for participation in participations:
+            if not (participation.event.organizer == user 
+                    or participation.event.village.leader == user 
+                    or user.role == 'admin'):
+                return Response({
+                    "success": False,
+                    "message": f"You do not have permission to update participation {participation.participation_id}."
+                }, status=status.HTTP_403_FORBIDDEN)
 
-        participation.status = new_status
-        participation.approved_at = timezone.now()
-        participation.save()
+        # Update participations in a transaction
+        with transaction.atomic():
+            for participation in participations:
+                participation.status = new_status
+                participation.approved_at = timezone.now()
+                participation.save()
 
-        serializer = self.get_serializer(participation)
+        output_serializer = self.get_serializer(participations, many=True)
+        
         return Response({
             "success": True,
-            "message": f"Participation {new_status.lower()} successfully",
-            "data": serializer.data
-        })
+            "message": f"Participations {new_status.lower()} successfully",
+            "data": output_serializer.data
+        }, status=status.HTTP_200_OK)
 
     # ---------------- BULK APPROVE/REJECT PARTICIPATIONS ----------------
     @extend_schema(
