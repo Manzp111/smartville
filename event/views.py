@@ -40,7 +40,7 @@ from drf_spectacular.types import OpenApiTypes
 
 from .models import Event
 from .serializers import EventSerializer,VillageEventsResponseSerializer
-
+from .models import STATUS_CHOICES, CATEGORY_CHOICES
 
 
 class EventsByVillageAPIView(APIView):
@@ -133,13 +133,14 @@ class EventsByVillageAPIView(APIView):
 
 
 
-
+from .pagination import CustomPagination
 from rest_framework.permissions import IsAuthenticated, AllowAny
 class EventViewSet(EventRolePermissionMixin, viewsets.ModelViewSet):
     queryset = Event.objects.all().order_by("-created_at")
     serializer_class = EventSerializer
+    pagination_class = CustomPagination
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['status', 'village', 'date']
+    filterset_fields = ['status', 'category', 'date']
     search_fields = ['title', 'description', 'date']
     ordering = ['-created_at']
       
@@ -198,60 +199,115 @@ class EventViewSet(EventRolePermissionMixin, viewsets.ModelViewSet):
         )
 
     @extend_schema(
-        summary="retiving event acoording to the requester if admin you aceess all if leader you access your villages",
-        description="retriving list of event  according to user if role is admin he access both if he is leader he acess his own if residents only he acess his own only it is used by dashbord only",
+        summary="Retrieve events according to requester role",
+        description=(
+            "Admins: access all events\n"
+            "Leaders: access only their village events\n"
+            "Residents: access only their own events\n"
+            "Filters available: status, category\n"
+        ),
         request=EventSerializer,
         responses={200: EventSerializer(many=True)},
+        parameters=[
+            # OpenApiParameter(
+            #     name="status",
+            #     description="Filter by event status",
+            #     required=False,
+            #     type=OpenApiTypes.STR,
+            #     enum=[choice[0] for choice in STATUS_CHOICES],  # dropdown in Swagger
+            # ),
+            OpenApiParameter(
+                name="category",
+                description="Filter by event category",
+                required=False,
+                type=OpenApiTypes.STR,
+                enum=[choice[0] for choice in CATEGORY_CHOICES],  # dropdown in Swagger
+            ),
+            OpenApiParameter(
+                name="page",
+                description="Page number for pagination",
+                required=False,
+                type=OpenApiTypes.INT,
+            ),
+            OpenApiParameter(
+                name="limit",
+                description="Number of items per page",
+                required=False,
+                type=OpenApiTypes.INT,
+            ),
+
+            OpenApiParameter(
+                name="village_id",
+                description="Filter by village UUID",
+                required=False,
+                type=OpenApiTypes.UUID,
+            ),
+
+        ],
         examples=[
             OpenApiExample(
-                name="retrive event according to the loged in user ",
-                
-                summary="example of event data to be retrived",
+                name="Example Event Response",
                 value={
-                    "title": "gukingira",
-                    "description": "abaganga bazaza gukingira abana kumashuri",
-                    "village": {
-                        "village_id": "92bcb9ea-b084-4234-9ae7-22a67db3c018",
-                        "province": "Amajyaruguru",
-                        "district": "Burera",
-                        "sector": "Bungwe",
-                        "cell": "Bungwe",
-                        "village": "Gakeri"
-                    },
-                    "exact_location": "kigali",
-                    "date": "2025-09-27",
-                    "start_time": "15:29:00",
-                    "end_time": "22:34:00",
-                    "organizer": {
-                        "person": {
-                        "first_name": "Ndacyayisenga",
-                        "last_name": "Aloys",
-                        "phone_number": "null"
+                    "success": True,
+                    "message": "Events retrieved successfully",
+                    "data": [
+                        {
+                            "title": "Community Cleanup",
+                            "status": "APPROVED",
+                            "category": "Cleanliness Drive",
+                            "village": {
+                                "village_id": "92bcb9ea-b084-4234-9ae7-22a67db3c018",
+                                "village": "Gakeri"
+                            },
+                            "date": "2025-09-27",
                         }
-                    },
-                    "image": "null",
-                    "image_url": "null",
-                    "status": "PENDING",
-                    "created_at": "2025-09-13T15:31:21.848041+02:00",
-                    
-    
-
-
+                    ],
+                    "meta": {
+                        "page": 1,
+                        "limit": 10,
+                        "total_pages": 1,
+                        "total_items": 1
+                    }
                 }
-
             )
-        ],
+        ]
     )
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
-        page = self.paginate_queryset(queryset)
+
+        # Filtering
+        status_filter = request.query_params.get("status")
+        category_filter = request.query_params.get("category")
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        if category_filter:
+            queryset = queryset.filter(category=category_filter)
+
+        # Pagination
+        paginator = self.pagination_class()
+        page = paginator.paginate_queryset(queryset, request)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
+            return paginator.get_paginated_response({
+                "success": True,
+                "message": "Events retrieved successfully",
+                "data": serializer.data
+            })
 
         serializer = self.get_serializer(queryset, many=True)
-        return success_response(data=serializer.data, message="Events retrieved successfully")
-
+        return {
+            "success": True,
+            "message": "Events retrieved successfully",
+            "data": serializer.data,
+            "meta": {
+                "page": 1,
+                "limit": len(serializer.data),
+                "total_pages": 1,
+                "total_items": len(serializer.data),
+                "next": None,
+                "previous": None
+            }
+        }
     @extend_schema(
         responses={200: EventSerializer},
         summary="retriving one even by id"
@@ -297,16 +353,36 @@ class EventViewSet(EventRolePermissionMixin, viewsets.ModelViewSet):
                 "Partial Update Example",
                 description="Update only the event title and Village",
                 value={
-                        "title": "umuganda",
-                        "description": " umuganda w'ukwezi",
-                        "Village": "Huye",
-                        "date": "2025-09-12",
-                        "start_time": "09:00:00",
-                        "end_time": "17:00:00",
-                        "organizer": "gilbertnshimyimana130@gmail.com.com",
-                        "image": None,
-                        "created_at": "2025-09-11T08:30:00Z",
-                        "updated_at": "2025-09-11T09:15:00Z"
+     
+                        "title": "Updated Umuganda Event",
+                        "description": "Updated description for the event",
+                        "status": "APPROVED",
+                        "category": "Festival & Celebration",
+                        "type": "Alert",
+                        "exact_place_of_village": "New exact location",
+                        "date": "2025-09-25",
+                        "start_time": "10:00:00",
+                        "end_time": "12:00:00",
+                        "village": {
+                            "village_id": "ed0da226-2a9d-4689-96b1-685f135a8bc9",
+                            "province": "Amajyaruguru",
+                            "district": "Burera",
+                            "sector": "Bungwe",
+                            "cell": "Bungwe",
+                            "village": "Updated Gatenga"
+                        },
+                        "organizer": {
+                            "person": {
+                            "first_name": "Maombi",
+                            "last_name": "Updated Immacule",
+                            "phone_number": "0781234567",
+                            "national_id": 1234567890123456,
+                            "gender": "female",
+                            "person_type": "resident"
+                            }
+                        }
+
+
                 },
                 request_only=True
             ),
@@ -341,32 +417,85 @@ class EventViewSet(EventRolePermissionMixin, viewsets.ModelViewSet):
     
 
 
+
+ # user can set ?page=2
+class EventPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = "limit"   # user can set ?limit=5
+    page_query_param = "page"        
+
+
+
 class EventViewSetlist(viewsets.ViewSet):
-     
+    """
+    ViewSet to list events of a specific village with filters and pagination
+    """
+
+    @extend_schema(
+        summary="Retrieve events of a specific village",
+        description="Fetch events by village ID. Supports optional filtering by status and category.",
+        parameters=[
+            OpenApiParameter(
+                name="status",
+                description="Filter by event status",
+                required=False,
+                type=OpenApiTypes.STR,
+                enum=[choice[0] for choice in STATUS_CHOICES],  # 🔹 dropdown
+            ),
+            OpenApiParameter(
+                name="category",
+                description="Filter by event category",
+                required=False,
+                type=OpenApiTypes.STR,
+                enum=[choice[0] for choice in CATEGORY_CHOICES],  # 🔹 dropdown
+            ),
+            OpenApiParameter(name="page", description="Page number for pagination", required=False, type=OpenApiTypes.INT),
+            OpenApiParameter(name="limit", description="Number of items per page", required=False, type=OpenApiTypes.INT),
+        ],
+    )
     def list(self, request, village_id=None):
-        """List volunteering events of a specific village"""
+        """List events of a specific village with optional filters (status, category)"""
+
+        # 🔹 Validate village existence
         try:
             village = Village.objects.get(village_id=village_id)
         except Village.DoesNotExist:
-            return Response({"detail": "Village not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {
+                    "success": False,
+                    "message": "Village not found",
+                    "data": [],
+                    "meta": {}
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
-        volunter_activity = Event.objects.filter(village=village)
-        paginator = PageNumberPagination()
-        paginator.page_size = request.query_params.get("page_size", 10)  # allow custom page size
-        result_page = paginator.paginate_queryset(volunter_activity, request)
-        serializer = EventSerializer(volunter_activity, many=True)
-        return paginator.get_paginated_response({
-            "status": "success",
-            "message": f"Events for village {village.village}",
-            
-            "count": len(serializer.data),
-            "village":{
-                "village_id":village.village_id,
-                "province":village.province,
-                "district":village.district,
-                "sector":village.sector,
-                "cell":village.cell,
-                "village":village.village,
-            },
-            "data": serializer.data
-        })
+        # 🔹 Base queryset
+        queryset = Event.objects.filter(village=village)
+
+        # 🔹 Apply filters
+        status_param = request.query_params.get("status")
+        category_param = request.query_params.get("category")
+
+        if status_param:
+            queryset = queryset.filter(status=status_param.upper())
+        if category_param:
+            queryset = queryset.filter(category=category_param)
+
+        # 🔹 Pagination
+        paginator = EventPagination()
+        page = paginator.paginate_queryset(queryset, request)
+        serializer = EventSerializer(page, many=True)
+
+        # 🔹 Response structure
+        return Response({
+            "success": True,
+            "message": f"Events for village {village.village} retrieved successfully",
+            "data": serializer.data,
+            "meta": {
+                "page": paginator.page.number,
+                "limit": paginator.get_page_size(request),
+                "total_pages": paginator.page.paginator.num_pages,
+                "total_items": paginator.page.paginator.count,
+            }
+        }, status=status.HTTP_200_OK)

@@ -1,21 +1,26 @@
-# event/pagination.py
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
 class CustomPagination(PageNumberPagination):
-    page_size = 1  # default items per page
-    page_size_query_param = "page_size"  # client can override page size
-    max_page_size = 100  # maximum items per page
+    page_size_query_param = "limit"  # allow ?limit=10
+    max_page_size = 100
 
     def get_paginated_response(self, data):
+        request = self.request
+        paginator = self.page.paginator
+
         return Response({
             "success": True,
             "message": "Data retrieved successfully",
-            "next": bool(self.page.has_next()),
-            "previous": bool(self.page.has_previous()),
-            "next_link": self.get_next_link(),
-            "previous_link": self.get_previous_link(),
-            "count": self.page.paginator.count,
-            "page_count": len(data),   
-            "data": data
+            "data": data,
+            "meta": {
+                "page": self.page.number,
+                "limit": self.get_page_size(request),
+                "total": paginator.count,
+                "total_pages": paginator.num_pages,
+                "has_next": self.page.has_next(),
+                "has_prev": self.page.has_previous(),
+                "next": self.get_next_link(),
+                "previous": self.get_previous_link(),
+            }
         })

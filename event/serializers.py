@@ -62,7 +62,7 @@ class EventSerializer(serializers.ModelSerializer):
 
 
 class EventSerializer(serializers.ModelSerializer):
-    village = serializers.StringRelatedField()  
+    village = LocationSerializer(read_only=True) 
     organizer=  UserListSerializer(read_only=True)   
 
     class Meta:

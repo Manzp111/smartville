@@ -3,6 +3,7 @@ from .views import EventViewSet,EventViewSetlist
 from django.urls import path,include
 router = DefaultRouter()
 router.register(r'event', EventViewSet, basename='event')
+
 village_event_list = EventViewSetlist.as_view({"get": "list"})
 
 
