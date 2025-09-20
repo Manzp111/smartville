@@ -4,13 +4,14 @@ from django.utils import timezone
 class VolunteerParticipationInline(admin.TabularInline):
     model = VolunteerParticipation
     extra = 0
-    readonly_fields = ("user", "status", "joined_at", "updated_at", "approved_at")
+    readonly_fields = (  "user", "status", "joined_at", "updated_at", "approved_at")
     can_delete = False
 
 
 @admin.register(VolunteeringEvent)
 class VolunteeringEventAdmin(admin.ModelAdmin):
     list_display = (
+        "volunteer_id",
         "title", "village", "organizer", "status",
         "date", "capacity", "approved_volunteers_count",
         "is_full", "available_spots"
@@ -20,28 +21,12 @@ class VolunteeringEventAdmin(admin.ModelAdmin):
     ordering = ("-date",)
     inlines = [VolunteerParticipationInline]
 
-    fieldsets = (
-        ("Event Details", {
-            "fields": ("title", "description", "date", "start_time", "end_time", "village", "organizer")
-        }),
-        ("Capacity & Approval", {
-            "fields": ("capacity", "status", "rejection_reason", "category", "skills_required", "location")
-        }),
-        ("System Info", {
-            "fields": ("approved_volunteers_count", "is_full", "available_spots"),
-            "classes": ("collapse",),
-        }),
-        ("Timestamps", {
-            "fields": ("created_at", "updated_at", "approved_at"),
-            "classes": ("collapse",),
-        }),
-    )
     readonly_fields = ("approved_volunteers_count", "is_full", "available_spots", "created_at", "updated_at", "approved_at")
 
 
 @admin.register(VolunteerParticipation)
 class VolunteerParticipationAdmin(admin.ModelAdmin):
-    list_display = ("user", "event", "status", "joined_at", "updated_at", "approved_at")
+    list_display = ( "participation_id", "user", "event", "status", "joined_at", "updated_at", "approved_at")
     list_filter = ("status", "joined_at", "event__village", "event__date")
     search_fields = ("user__username", "event__title", "event__village__village")
     ordering = ("-joined_at",)
