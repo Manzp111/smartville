@@ -4,6 +4,7 @@ from django.utils import timezone
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from Village.models import Village
+from django.contrib.postgres.fields import ArrayField
 
 class VolunteeringEvent(models.Model):
     STATUS_CHOICES = [
@@ -39,7 +40,12 @@ class VolunteeringEvent(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="DRAFT")
     rejection_reason = models.TextField(blank=True, null=True)
     location = models.CharField(max_length=255, blank=True, null=True)
-    skills_required = models.TextField(blank=True, null=True)
+    # skills_required = models.TextField(blank=True, null=True)
+    skills_required = ArrayField(
+    models.CharField(max_length=50), 
+    blank=True, 
+    null=True
+)
     category=models.CharField(max_length=50,choices=VOLUNTEER_EVENT_CATEGORY,default="Community & Social")
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True,null=True,blank=True)
