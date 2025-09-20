@@ -28,19 +28,24 @@ INSTALLED_APPS = [
 
     # Third-party
     'drf_spectacular',
-    # 'django_celery_beat',
+    'django_celery_beat',
     'corsheaders',
     'django_filters',
     
     # Local apps
     'account',
-    'Village',
+    'Location',
     'event',
     'Resident',
     'vistor',
-    "villagesInfo",
-    "VillageAnnouncement",
-    "VolunteerActivity",
+
+    'complaint',
+    'alert',
+
+
+    "villages",
+    'village',
+
 ]
 
 # MIDDLEWARE (CorsMiddleware moved near top)
@@ -76,13 +81,13 @@ TEMPLATES = [
 WSGI_APPLICATION = 'SmartVillage.wsgi.application'
 
 # DATABASE
-DATABASE_URL = config("DATABASE_URL")  # Get URL from environment variable
-if not DATABASE_URL:
-    raise Exception("DATABASE_URL environment variable not set")
-
 DATABASES = {
-    "default": dj_database_url.parse(DATABASE_URL, conn_max_age=600)
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",  # creates db.sqlite3 in your project root
+    }
 }
+
 
 # PASSWORD VALIDATION
 AUTH_PASSWORD_VALIDATORS = [
@@ -159,7 +164,7 @@ EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
 
 # CELERY (Redis)
 CELERY_BROKER_URL = config('REDIS_URL', default='redis://localhost:6379/0')
-CELERY_RESULT_BACKEND = config('REDIS_URL', default='redis://localhost:6379/1')
+CELERY_RESULT_BACKEND = config('REDIS_URL', default='redis://localhost:6379/0')
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"

@@ -333,4 +333,3 @@ class EventViewSet(EventRolePermissionMixin, viewsets.ModelViewSet):
         kwargs['partial'] = True
         return super().perform_update(request, *args, **kwargs)
     
-

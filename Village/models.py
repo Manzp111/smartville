@@ -3,7 +3,9 @@ from django.conf import settings
 import uuid
 from django.core.exceptions import ValidationError
 
-class Village(models.Model):
+
+
+class Location(models.Model):
     village_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     province = models.CharField(max_length=50)
     district = models.CharField(max_length=50)
