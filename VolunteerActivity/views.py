@@ -4,7 +4,7 @@ from rest_framework import viewsets, status, filters
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
-from drf_spectacular.utils import extend_schema, OpenApiExample, OpenApiResponse
+from drf_spectacular.utils import extend_schema, OpenApiExample, OpenApiResponse,OpenApiParameter, OpenApiTypes
 from .models import VolunteeringEvent
 from .serializers import VolunteeringEventSerializer, VolunteeringEventCreateSerializer
 from Village.models import Village
@@ -80,63 +80,87 @@ class VolunteeringEventViewSet(viewsets.ModelViewSet):
             "- Residents see their own events.\n"
             "- Leaders see events in their villages.\n"
             "- Admins see all events.\n\n"
-            "Supports search by `title` or `description`.\n"
+            "Supports filtering by `title`, `description`, `category`, `status`, `organizer_phone`, `village_id`, `volunteer_id`.\n"
             "Response includes pagination metadata and next/prev page links."
         ),
-        responses={
-            200: OpenApiResponse(
-                description="Paginated volunteering event list",
-                examples=[
-                    OpenApiExample(
-                        "Example Response",
-                        value={
-                            "success": True,
-                            "message": "Volunteering events fetched successfully",
-                            "data": [
-                                {
-                                    "volunteer_id": "uuid1",
-                                    "title": "Community Clean-up",
-                                    "description": "Cleaning the local park",
-                                    "date": "2025-10-01",
-                                    "start_time": "08:00:00",
-                                    "end_time": "12:00:00",
-                                    "capacity": 20,
-                                    "village": "uuid_village",
-                                    "organizer": "uuid_user",
-                                    "status": "DRAFT",
-                                    "skills_required": ["Teamwork", "Physical Fitness"],
-                                    "category": "Community & Social",
-                                    "created_at": "2025-09-20T09:00:00Z",
-                                    "updated_at": "2025-09-20T09:00:00Z",
-                                    "approved_at": None
-                                }
-                            ],
-                            "meta": {
-                                "page": 1,
-                                "limit": 10,
-                                "total": 45,
-                                "total_pages": 5,
-                                "has_next": True,
-                                "has_prev": False
-                            }
-                        }
-                    )
-                ]
-            )
-        }
+        parameters=[
+            OpenApiParameter(name='volunteer_id', description='Filter by volunteering event UUID', required=False, type=OpenApiTypes.UUID),
+            OpenApiParameter(name='village_id', description='Filter by village UUID', required=False, type=OpenApiTypes.UUID),
+            OpenApiParameter(name='page', description='Page number for pagination', required=False, type=OpenApiTypes.INT),
+            OpenApiParameter(name='limit', description='Number of items per page', required=False, type=OpenApiTypes.INT),
+            OpenApiParameter(
+                name='category',
+                description='Filter by event category',
+                required=False,
+                type=OpenApiTypes.STR,
+                enum=[c[0] for c in VolunteeringEvent.VOLUNTEER_EVENT_CATEGORY]
+            ),
+            OpenApiParameter(
+                name='status',
+                description='Filter by event status',
+                required=False,
+                type=OpenApiTypes.STR,
+                enum=[s[0] for s in VolunteeringEvent.STATUS_CHOICES]
+            ),
+            OpenApiParameter(
+                name='organizer_phone',
+                description='Filter by organizer phone number',
+                required=False,
+                type=OpenApiTypes.STR
+            ),
+        ]
     )
     def list(self, request, *args, **kwargs):
+        """
+        List Volunteering Events with optional filters:
+        - volunteer_id: Filter by specific event UUID
+        - village_id: Filter by village UUID
+        - category: Filter by event category
+        - status: Filter by event status
+        - organizer_phone: Filter by organizer's phone number
+        """
         user = request.user
         queryset = self.queryset
 
+        # Role-based visibility
         if user.role == "resident":
             queryset = queryset.filter(organizer=user)
         elif user.role == "leader":
             queryset = queryset.filter(village__leader=user)
-        
+
+        # Get filters from query params
+        volunteer_id = request.query_params.get('volunteer_id')
+        village_id = request.query_params.get('village_id')
+        category = request.query_params.get('category')
+        status = request.query_params.get('status')
+        organizer_phone = request.query_params.get('organizer_phone')
+
+        # Apply filters
+        if volunteer_id:
+            queryset = queryset.filter(volunteer_id=volunteer_id)
+        if village_id:
+            queryset = queryset.filter(village__id=village_id)
+        if category:
+            queryset = queryset.filter(category=category)
+        if status:
+            queryset = queryset.filter(status=status.upper())
+        if organizer_phone:
+            queryset = queryset.filter(organizer__phone_number=organizer_phone)
+
+        # Pagination
         page = self.paginate_queryset(queryset)
-        serializer = self.get_serializer(page, many=True)
-        return self.get_paginated_response(serializer.data)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        # Fallback if pagination is not applied
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({
+            "success": True,
+            "message": "Volunteering events fetched successfully",
+            "data": serializer.data
+        })
+
 
     # --------------------------
     # Retrieve a Volunteering Event
