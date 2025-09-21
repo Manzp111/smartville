@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from .models import Event
 from account.serializers import PersonSerializer
-from Location.serializers import LocationSerializer
+from Village.serializers import LocationSerializer
 from account.models import User
 # from account.serializers import UserListSerializer
 
@@ -63,10 +63,18 @@ class EventSerializer(serializers.ModelSerializer):
 
 class EventSerializer(serializers.ModelSerializer):
     village = serializers.StringRelatedField()  
+    organizer=  UserListSerializer(read_only=True)   
 
     class Meta:
         model = Event
         fields = "__all__"
+        read_only_fields = ["organizer", "village"]
+    def validate(self, attrs):
+        # Check if user is authenticated during validation
+        user = self.context['request'].user
+        if not user.is_authenticated:
+            raise serializers.ValidationError("Authentication required")
+        return attrs
 
 class VillageEventsResponseSerializer(serializers.Serializer):
     village_id = serializers.UUIDField()

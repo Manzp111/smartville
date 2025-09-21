@@ -13,7 +13,7 @@
         widgetName = windowName.replace(/^(change|add|delete|lookup)_/, '');
         windowRefProxy = {
             name: widgetName,
-            location: windowRef.location,
+            Village: windowRef.Village,
             close: function() {
                 openerRef.dismissRelatedObjectModal();
             }

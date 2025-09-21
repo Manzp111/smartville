@@ -61,37 +61,65 @@ from .utils import generate_otp
         OpenApiExample(
             'Register Example',
             value={
-                "email": "gilbertnshimyimana130@gmail.com",
+                "phone_number": "0788730366",
                 "password": "Ng112233@",
                 "confirm_password": "Ng112233@",
                 "person": {
                     "first_name": "Gilbert",
                     "last_name": "Nshimyimana",
-                }
+                    "national_id": "1234567890123459",
+                    "gender": "male",
+                },
+                "location_id":"f138c017-e26d-418b-85c6-b2978e348e91"
+                
+                
             },
             request_only=True,
-            summary="Example request payload for registration"
+            summary="Example request payload for registration with Village"
         )
     ],
-    description="Create a new user account. Returns a message to verify email using OTP.",
+
+
+    description="Create a new user account with phonenumber used in login ",
     summary="Register to be a user of system"
 )
-class RegisterView(APIView):
-    permission_classes = [AllowAny]
-    authentication_classes = []
 
-    def post(self, request):
+
+class RegisterView(APIView):
+    def post(self, request, *args, **kwargs):
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
-            return success_response(
-                data={"email": user.email},
-                message=f"Account created. Verify email using OTP for {user.email}",
-                status_code=status.HTTP_201_CREATED
-            )
-        
-       
-        return error_response(errors=serializer.errors)
+            return Response({
+                "success": True,
+                "message": "User registered successfully",
+                "data": {
+                    "id": user.user_id,
+                    "phone_number": user.phone_number,
+                    "password":user.password,
+                    "role": getattr(user, "role", None)
+                }
+            }, status=status.HTTP_201_CREATED)
+        else:
+            # Extract meaningful error messages
+            def get_error_message(errors):
+                if isinstance(errors, dict):
+                    for value in errors.values():
+                        msg = get_error_message(value)
+                        if msg:
+                            return msg
+                elif isinstance(errors, list) and errors:
+                    return get_error_message(errors[0])
+                elif isinstance(errors, str):
+                    return errors
+                return "An error occurred"
+
+            return Response({
+                "success": False,
+                "message": get_error_message(serializer.errors),
+                "errors": serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+
 
 
 # -----------------------------
@@ -274,7 +302,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
                                 "person": {
                                     "first_name": "Gilbert",
                                     "last_name": "Nshimyimana",
-                                    "location": {
+                                    "Village": {
                                         "province": "Kigali",
                                         "district": "Gasabo",
                                         "sector": "Kimihurura",
@@ -305,7 +333,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
     # ---------------- CREATE ----------------
     @extend_schema(
         summary="Create a new user",
-        description="Admin can create a new user with associated person and location info.",
+        description="Admin can create a new user with associated person and Village info.",
         request=UserListSerializer,
         examples=[
             OpenApiExample(
@@ -318,7 +346,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
                     "person": {
                         "first_name": "manzp",
                         "last_name": "prience",
-                        "location": {
+                        "Village": {
                             "province": "Kigali",
                             "district": "Gasabo",
                             "sector": "Kimihurura",
@@ -346,7 +374,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
                         "person": {
                             "first_name": "manzp",
                             "last_name": "prience",
-                            "location": {
+                            "Village": {
                                 "province": "Kigali",
                                 "district": "Gasabo",
                                 "sector": "Kimihurura",
@@ -397,7 +425,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
                         "person": {
                             "first_name": "Gilbert",
                             "last_name": "Nshimyimana",
-                            "location": {
+                            "Village": {
                                 "province": "Kigali",
                                 "district": "Gasabo",
                                 "sector": "Kimihurura",
@@ -484,7 +512,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
                         "person": {
                             "first_name": "Gilbert",
                             "last_name": "Nshimyimana",
-                            "location": {
+                            "Village": {
                                 "province": "Kigali",
                                 "district": "Gasabo",
                                 "sector": "Kimihurura",

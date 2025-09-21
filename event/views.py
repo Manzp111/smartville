@@ -13,25 +13,22 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from .models import Event
-from Location.models import Location
+from Village.models import Village
 from .serializers import EventSerializer
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .models import Event
-from Location.models import Location
 from .serializers import EventSerializer
-
-
+from rest_framework.permissions import AllowAny
+from rest_framework.pagination import PageNumberPagination
+from django_filters.rest_framework import DjangoFilterBackend
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from drf_spectacular.utils import extend_schema, OpenApiExample
-from .models import Event
-from Location.models import Location
-
 
 # views.py
 from rest_framework.views import APIView
@@ -42,7 +39,6 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExampl
 from drf_spectacular.types import OpenApiTypes
 
 from .models import Event
-from Location.models import Location
 from .serializers import EventSerializer,VillageEventsResponseSerializer
 
 
@@ -50,6 +46,7 @@ from .serializers import EventSerializer,VillageEventsResponseSerializer
 class EventsByVillageAPIView(APIView):
 
     @extend_schema(
+        summary="get village event only",
         request=None,  
         parameters=[
             OpenApiParameter(
@@ -65,6 +62,7 @@ class EventsByVillageAPIView(APIView):
             OpenApiExample(
                 "Village Events Response Example",
                 description="Example response showing events for a village",
+                
                 value={
                     "village_id": "ed0da226-2a9d-4689-96b1-685f135a8bc9",
                     "village": "Gatenga",
@@ -96,47 +94,64 @@ class EventsByVillageAPIView(APIView):
         Returns all events for the given village_id (UUID).
         """
         try:
-            village = Location.objects.get(village_id=village_id)
-        except Location.DoesNotExist:
+            village = Village.objects.get(village_id=village_id)
+        except Village.DoesNotExist:
             return Response({"detail": "Village not found"}, status=status.HTTP_404_NOT_FOUND)
 
         events = Event.objects.filter(village=village).order_by("-date")
         event_serializer = EventSerializer(events, many=True)
 
+        leader_data = None
+        if village.leader:
+            leader_data = {
+                "user_id": village.leader.user_id,
+                "first_name": village.leader.person.first_name,
+                "last_name": village.leader.person.last_name,
+                "email": village.leader.email,
+                "phone_number": village.leader.person.phone_number,
+            }
+
         response_data = {
             "success":True,
-            "message":f"event o {village.village} of retrived well",
-            "village_id": str(village.village_id),
-            "village": village.village,
+            "message":f"event of {village.village} of retrived well",
+            "data":{
+            
+            "village": {
+                "province":village.province,
+                "district":village.district,
+                "sector":village.sector,
+                "cell":village.cell,
+                "villages_name":village.village,
+                "village_id": str(village.village_id),
+                "village_leader":leader_data,
+         
+            },
             "events": event_serializer.data
+            }
         }
         return Response(response_data, status=status.HTTP_200_OK)
 
 
 
 
-class EventViewSet(EventRolePermissionMixin,viewsets.ModelViewSet):
+from rest_framework.permissions import IsAuthenticated, AllowAny
+class EventViewSet(EventRolePermissionMixin, viewsets.ModelViewSet):
     queryset = Event.objects.all().order_by("-created_at")
     serializer_class = EventSerializer
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['status', 'village', 'date'] 
-    search_fields = ['title', 'description', 'date'] 
+    filterset_fields = ['status', 'village', 'date']
+    search_fields = ['title', 'description', 'date']
     ordering = ['-created_at']
-<<<<<<< HEAD
-  
-=======
- 
-        
+      
        
     
 
->>>>>>> main
     def perform_create(self, serializer):
         user = self.request.user
         try:
             # Get the resident linked to this user
             resident = Resident.objects.get(person__user=user, is_deleted=False)
-            village = resident.location
+            village = resident.village
         except Resident.DoesNotExist:
             village = None  # or raise an error if you want to enforce a resident
         serializer.save(organizer=user, village=village)
@@ -157,7 +172,7 @@ class EventViewSet(EventRolePermissionMixin,viewsets.ModelViewSet):
                 value={
                      "title": "umuganda",
                     "description": "hari umuganda usoza ukwezi kuwa 30 kanama",
-                    "location": "uzabera kukagari",
+                    "exact_place_of_village": "uzabera kukagari",
                     "date": "2025-09-13",
                     "start_time": "16:53:40.782Z",
                     "end_time": "16:53:40.782Z",
@@ -203,7 +218,7 @@ class EventViewSet(EventRolePermissionMixin,viewsets.ModelViewSet):
                         "cell": "Bungwe",
                         "village": "Gakeri"
                     },
-                    "location": "kigali",
+                    "exact_location": "kigali",
                     "date": "2025-09-27",
                     "start_time": "15:29:00",
                     "end_time": "22:34:00",
@@ -262,11 +277,11 @@ class EventViewSet(EventRolePermissionMixin,viewsets.ModelViewSet):
         examples=[
             OpenApiExample(
                 "Partial Update Example",
-                description="Update only the event title and location",
+                description="Update only the event title and Village",
                 value={
                         "title": "umuganda",
                         "description": " umuganda w'ukwezi",
-                        "location": "Huye",
+                        "Village": "Huye",
                         "date": "2025-09-12",
                         "start_time": "09:00:00",
                         "end_time": "17:00:00",
@@ -280,6 +295,25 @@ class EventViewSet(EventRolePermissionMixin,viewsets.ModelViewSet):
             OpenApiExample(
                 "Successful Update Response",
                 description="Example of a successful event update response",
+                
+                value={
+                    "status": "success",
+                    "message": "Event updated successfully",
+                    "data": {
+                        "title": "umuganda",
+                        "description": " umuganda w'ukwezi",
+                        "Village": "Huye",
+                        "date": "2025-09-12",
+                        "start_time": "09:00:00",
+                        "end_time": "17:00:00",
+                        "organizer": "gilbertnshimyimana130@gmail.com.com",
+                        "image": None,
+                        "created_at": "2025-09-11T08:30:00Z",
+                        "updated_at": "2025-09-11T09:15:00Z"
+                    }
+                },
+                response_only=True
+                
             )
         ]
     )
@@ -288,3 +322,33 @@ class EventViewSet(EventRolePermissionMixin,viewsets.ModelViewSet):
         return super().perform_update(request, *args, **kwargs)
     
 
+
+class EventViewSetlist(viewsets.ViewSet):
+     
+    def list(self, request, village_id=None):
+        """List volunteering events of a specific village"""
+        try:
+            village = Village.objects.get(village_id=village_id)
+        except Village.DoesNotExist:
+            return Response({"detail": "Village not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        volunter_activity = Event.objects.filter(village=village)
+        paginator = PageNumberPagination()
+        paginator.page_size = request.query_params.get("page_size", 10)  # allow custom page size
+        result_page = paginator.paginate_queryset(volunter_activity, request)
+        serializer = EventSerializer(volunter_activity, many=True)
+        return paginator.get_paginated_response({
+            "status": "success",
+            "message": f"Events for village {village.village}",
+            
+            "count": len(serializer.data),
+            "village":{
+                "village_id":village.village_id,
+                "province":village.province,
+                "district":village.district,
+                "sector":village.sector,
+                "cell":village.cell,
+                "village":village.village,
+            },
+            "data": serializer.data
+        })

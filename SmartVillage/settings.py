@@ -5,6 +5,10 @@ import os
 import sys
 from datetime import timedelta
 from corsheaders.defaults import default_headers  # Added for CORS
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+
 
 # BASE DIR
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -28,23 +32,22 @@ INSTALLED_APPS = [
 
     # Third-party
     'drf_spectacular',
-    'django_celery_beat',
+    # 'django_celery_beat',
     'corsheaders',
     'django_filters',
     
     # Local apps
     'account',
-    'Location',
+    'Village',
     'event',
     'Resident',
     'vistor',
+    "villagesInfo",  
+    "VolunteerActivity",
+    'team_contact',
 
     'complaint',
     'alert',
-
-
-    "villages",
-
 ]
 
 # MIDDLEWARE (CorsMiddleware moved near top)
@@ -58,6 +61,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+   
 ]
 
 ROOT_URLCONF = 'SmartVillage.urls'
@@ -80,12 +84,11 @@ TEMPLATES = [
 WSGI_APPLICATION = 'SmartVillage.wsgi.application'
 
 # DATABASE
-DATABASE_URL = config("DATABASE_URL")  # Get URL from environment variable
-if not DATABASE_URL:
-    raise Exception("DATABASE_URL environment variable not set")
-
 DATABASES = {
-    "default": dj_database_url.parse(DATABASE_URL, conn_max_age=600)
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",  # creates db.sqlite3 in your project root
+    }
 }
 
 # PASSWORD VALIDATION
@@ -135,7 +138,7 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=2),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
@@ -163,7 +166,7 @@ EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
 
 # CELERY (Redis)
 CELERY_BROKER_URL = config('REDIS_URL', default='redis://localhost:6379/0')
-CELERY_RESULT_BACKEND = config('REDIS_URL', default='redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = config('REDIS_URL', default='redis://localhost:6379/1')
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
