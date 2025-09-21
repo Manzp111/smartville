@@ -32,15 +32,20 @@ class LocationSerializer(serializers.ModelSerializer):
 class VolunteeringEventSerializer(serializers.ModelSerializer):
     approved_volunteers_count = serializers.IntegerField(read_only=True)
     is_full = serializers.BooleanField(read_only=True)
+    approved_capacity_display = serializers.SerializerMethodField()
 
     class Meta:
         model = VolunteeringEvent
         fields = [
-            "id",
+            "volunteer_id",
             "title",
             "description",
             "date",
             "capacity",
             "approved_volunteers_count",
             "is_full",
+            "approved_capacity_display",  # 👈 add here
         ]
+
+    def get_approved_capacity_display(self, obj):
+        return f"{obj.approved_volunteers_count}/{obj.capacity}"

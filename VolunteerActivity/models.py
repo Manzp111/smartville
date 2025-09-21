@@ -147,3 +147,7 @@ class VolunteerParticipation(models.Model):
 
     def __str__(self):
         return f"{self.user} - {self.event} ({self.status})"
+    
+    @property
+    def approved_capacity_display(self):
+        return f"{self.approved_volunteers_count}/{self.capacity}"

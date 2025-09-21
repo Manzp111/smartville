@@ -288,11 +288,9 @@ class EventViewSet(EventRolePermissionMixin, viewsets.ModelViewSet):
         page = paginator.paginate_queryset(queryset, request)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
-            return paginator.get_paginated_response({
-                "success": True,
-                "message": "Events retrieved successfully",
-                "data": serializer.data
-            })
+            return paginator.get_paginated_response(         
+                serializer.data
+            )
 
         serializer = self.get_serializer(queryset, many=True)
         return {
@@ -413,7 +411,18 @@ class EventViewSet(EventRolePermissionMixin, viewsets.ModelViewSet):
     )
     def partial_update(self, request, *args, **kwargs):
         kwargs['partial'] = True
-        return super().perform_update(request, *args, **kwargs)
+        kwargs['partial'] = True
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response({
+            "success":True,
+            "message":"event updated",
+            "data":serializer.data
+
+            }, status=status.HTTP_200_OK)
+        
     
 
 

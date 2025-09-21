@@ -356,7 +356,8 @@ class VolunteeringEventViewSet(viewsets.ModelViewSet):
         summary="Delete a Volunteering Event",
         description="Delete a volunteering event. Only organizers, leaders, or admin can delete.",
         responses={
-            204: OpenApiResponse(description="Event deleted successfully")
+           
+            200: OpenApiResponse(description="Event deleted successfully")
         }
     )
     def destroy(self, request, *args, **kwargs):
