@@ -362,11 +362,16 @@ class VolunteeringEventViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
         instance.delete()
-        return Response({"success": True, "message": "Volunteering event deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+        return Response(
+        {"success": True, "message": "Volunteering event deleted successfully"},
+          status=status.HTTP_200_OK
+          )
+
 
 # -------------------------
 # Village Event ViewSet
 # -------------------------
+from .serializers import VillageMinimalSerializer,VolunteeringEventListSerializer
 class VillageEventViewSet(viewsets.ViewSet):
     """
     ViewSet to list volunteering events of a specific village with role-based access.
@@ -376,10 +381,42 @@ class VillageEventViewSet(viewsets.ViewSet):
         summary="List Volunteering Events for a Village enter vllage id ",
         description=(
             "Returns all volunteering events for a given village. "
-            "Residents see only events they organized. "
-            "Leaders see all events in villages they lead. "
-            "Admin sees all events. Paginated response with metadata."
+
         ),
+        parameters=[
+            OpenApiParameter(
+                name="status",
+                description="Filter by event status",
+                required=False,
+                type=OpenApiTypes.STR,
+                enum=[choice[0] for choice in VolunteeringEvent.STATUS_CHOICES]  # dropdown
+            ),
+            OpenApiParameter(
+                name="category",
+                description="Filter by event category",
+                required=False,
+                type=OpenApiTypes.STR,
+                enum=[choice[0] for choice in VolunteeringEvent.VOLUNTEER_EVENT_CATEGORY]  # dropdown
+            ),
+            OpenApiParameter(
+                name="date",
+                description="Filter by exact event date (YYYY-MM-DD)",
+                required=False,
+                type=OpenApiTypes.DATE
+            ),
+            OpenApiParameter(
+                name="page",
+                description="Page number",
+                required=False,
+                type=OpenApiTypes.INT
+            ),
+            OpenApiParameter(
+                name="page_size",
+                description="Number of items per page",
+                required=False,
+                type=OpenApiTypes.INT
+            ),
+        ],
         responses={
             200: OpenApiResponse(
                 response=VolunteeringEventSerializer(many=True),
@@ -416,7 +453,7 @@ class VillageEventViewSet(viewsets.ViewSet):
                                 "total": 2,
                                 "total_pages": 1,
                                 "has_next": False,
-                                "has_prev": False
+                                "has_prev": False,
                             }
                         }
                     )
@@ -426,150 +463,79 @@ class VillageEventViewSet(viewsets.ViewSet):
         }
     )
     def list(self, request, village_id=None):
-        """List volunteering events of a specific village based on user role"""
         try:
             village = Village.objects.get(village_id=village_id)
         except Village.DoesNotExist:
-            return Response({"status": "error", "message": "Village not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"success": False, "message": "Village not found"}, status=status.HTTP_404_NOT_FOUND)
 
         user = request.user
         queryset = VolunteeringEvent.objects.filter(village=village)
 
-        # Role-based filtering
-        # if user.role == "resident":
-        #     queryset = queryset.filter(organizer=user)
-        # elif user.role == "leader":
-        #     if village.leader != user:
-        #         return Response({"status": "error", "message": "You do not have access to this village"}, status=status.HTTP_403_FORBIDDEN)
 
-        # queryset = queryset.order_by("-date", "-start_time")
+        # --- Apply filters (status, category, date) ---
+        status_filter = request.query_params.get("status")
+        category_filter = request.query_params.get("category")
+        date_filter = request.query_params.get("date")
 
-        # Pagination
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        if category_filter:
+            queryset = queryset.filter(category=category_filter)
+        if date_filter:
+            # exact date. If you want ranges, use date_after/date_before or django-filter
+            queryset = queryset.filter(date=date_filter)
+
+        # ordering
+        queryset = queryset.order_by("-date", "-start_time")
+
+        # --- Pagination ---
         paginator = VolunteeringEventPagination()
-        paginator.page_size = request.query_params.get("page_size", 10)
-        result_page = paginator.paginate_queryset(queryset, request)
+        # optional: let client override page_size
+        page_size_param = request.query_params.get("page_size")
+        if page_size_param:
+            try:
+                paginator.page_size = int(page_size_param)
+            except (TypeError, ValueError):
+                pass
 
-        serializer = VolunteeringEventSerializer(result_page, many=True)
+        page = paginator.paginate_queryset(queryset, request)
+        events_serialized = VolunteeringEventListSerializer(page, many=True, context={'request': request}).data
 
-        meta = {
-            "page": paginator.page.number,
-            "limit": paginator.page.paginator.per_page,
-            "total": paginator.page.paginator.count,
-            "total_pages": paginator.page.paginator.num_pages,
-            "has_next": paginator.page.has_next(),
-            "has_prev": paginator.page.has_previous()
-        }
+        # top-level village info
+        village_data = VillageMinimalSerializer(village, context={'request': request}).data
+
+        # --- build meta safely (if pagination used) ---
+        if page is not None and hasattr(paginator, 'page') and paginator.page is not None:
+            page_obj = paginator.page
+            meta = {
+                "page": page_obj.number,
+                "limit": page_obj.paginator.per_page,
+                "total": page_obj.paginator.count,
+                "total_pages": page_obj.paginator.num_pages,
+                "has_next": page_obj.has_next(),
+                "has_prev": page_obj.has_previous(),
+                "next": paginator.get_next_link(),
+                "previous": paginator.get_previous_link()
+            }
+        else:
+            # no pagination applied (unlikely with PageNumberPagination but safe)
+            meta = {
+                "page": 1,
+                "limit": len(events_serialized),
+                "total": len(events_serialized),
+                "total_pages": 1,
+                "has_next": False,
+                "has_prev": False,
+                "next": None,
+                "previous": None
+            }
 
         return Response({
-            "status": "success",
+            "success": True,
             "message": f"Events for village {village.village}",
-            "count": len(serializer.data),
-            "data": serializer.data,
+            "count": len(events_serialized),                 # number of events in this page
+            "filters": {"status": status_filter, "category": category_filter, "date": date_filter},
+            "village": village_data,                         # village top-level (once)
+            "data": events_serialized,                       # events WITHOUT full village nested
             "meta": meta
-        })
-
-
-# ###################################
-# class VillageEventViewSet(viewsets.ViewSet):
-#     """
-#     ViewSet to list volunteering events of a specific village with role-based access.
-#     """
-
-#     @extend_schema(
-#         summary="List Volunteering Events for a Village (Role-Aware)",
-#         description=(
-#             "Returns all volunteering events for a given village. "
-#             "Residents see only events they organized. "
-#             "Leaders see all events in villages they lead. "
-#             "Admin sees all events. Paginated response with metadata."
-#         ),
-#         responses={
-#             200: OpenApiResponse(
-#                 response=VolunteeringEventSerializer(many=True),
-#                 description="Successful Response",
-#                 examples=[
-#                     OpenApiExample(
-#                         "Sample Response",
-#                         value={
-#                             "status": "success",
-#                             "message": "Events for village Kabuga",
-#                             "count": 2,
-#                             "data": [
-#                                 {
-#                                     "volunteer_id": "uuid1",
-#                                     "title": "Tree Planting",
-#                                     "description": "Community tree planting",
-#                                     "date": "2025-09-25",
-#                                     "start_time": "09:00",
-#                                     "end_time": "12:00",
-#                                     "capacity": 20,
-#                                     "village": "uuid_village",
-#                                     "organizer": "uuid_user",
-#                                     "status": "APPROVED",
-#                                     "skills_required": ["Planting", "Coordination"],
-#                                     "category": "Environmental & Sustainability",
-#                                     "created_at": "2025-09-20T09:00:00Z",
-#                                     "updated_at": "2025-09-20T09:00:00Z",
-#                                     "approved_at": "2025-09-20T10:00:00Z"
-#                                 }
-#                             ],
-#                             "meta": {
-#                                 "page": 1,
-#                                 "limit": 10,
-#                                 "total": 2,
-#                                 "total_pages": 1,
-#                                 "has_next": False,
-#                                 "has_prev": False
-#                             }
-#                         }
-#                     )
-#                 ]
-#             ),
-#             404: OpenApiResponse(description="Village not found")
-#         }
-#     )
-#     def list(self, request, village_id=None):
-#         """List volunteering events of a specific village based on user role"""
-#         try:
-#             village = Village.objects.get(village_id=village_id)
-#         except Village.DoesNotExist:
-#             return Response({"status": "error", "message": "Village not found"}, status=status.HTTP_404_NOT_FOUND)
-
-#         user = request.user
-#         queryset = VolunteeringEvent.objects.filter(village=village)
-
-#         # Role-based filtering
-#         if user.role == "resident":
-#             queryset = queryset.filter(organizer=user)
-#         elif user.role == "leader":
-#             # Leaders see events in villages they lead
-#             if not village in user.led_villages.all():
-#                 return Response({"status": "error", "message": "You do not have access to this village"}, status=status.HTTP_403_FORBIDDEN)
-#             # queryset already filtered by village
-#         # Admin sees all
-
-#         queryset = queryset.order_by("-date", "-start_time")
-
-#         # Pagination
-#         paginator = PageNumberPagination()
-#         paginator.page_size = request.query_params.get("page_size", 10)
-#         result_page = paginator.paginate_queryset(queryset, request)
-
-#         serializer = VolunteeringEventSerializer(result_page, many=True)
-
-#         meta = {
-#             "page": paginator.page.number,
-#             "limit": paginator.page.paginator.per_page,
-#             "total": paginator.page.paginator.count,
-#             "total_pages": paginator.page.paginator.num_pages,
-#             "has_next": paginator.page.has_next(),
-#             "has_prev": paginator.page.has_previous()
-#         }
-
-#         return Response({
-#             "status": "success",
-#             "message": f"Events for village {village.village}",
-#             "count": len(serializer.data),
-#             "data": serializer.data,
-#             "meta": meta
-#         })
+        }, status=status.HTTP_200_OK)

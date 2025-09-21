@@ -46,3 +46,24 @@ class VolunteeringEventCreateSerializer(serializers.ModelSerializer):
             'category'
         ]
 
+
+
+from rest_framework import serializers
+from .models import VolunteeringEvent
+from Village.models import Village
+
+# Minimal event serializer used only for lists (excludes village to avoid repetition)
+class VolunteeringEventListSerializer(serializers.ModelSerializer):
+    organizer =UserListSerializer(read_only=True)# change to nested if you want more info
+
+    class Meta:
+        model = VolunteeringEvent
+        # exclude village to avoid repeating full village for each event
+        exclude = ['village']  
+        read_only_fields = ('volunteer_id', 'created_at', 'updated_at', 'approved_at')
+
+# Minimal village serializer (top-level)
+class VillageMinimalSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Village
+        fields = ('village_id', 'village', 'province', 'district', 'sector', 'cell')

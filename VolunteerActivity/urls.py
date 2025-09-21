@@ -10,9 +10,6 @@ router.register(r'participations', VolunteerParticipationViewSet, basename='part
 urlpatterns = [
     path('', include(router.urls)),
    
-    path(
-        "volunter/<uuid:village_id>/activity/",
-        VillageEventViewSet.as_view({'get': 'list'}),
-        name="village-events"
+    path("volunter/<uuid:village_id>/activity/",VillageEventViewSet.as_view({'get': 'list'}),name="village-events"
     ),
 ]
