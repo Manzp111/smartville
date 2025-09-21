@@ -4,9 +4,9 @@ from rest_framework import status
 from Village.models import Village
 from Resident.models import Resident
 from event.models import Event
-from .serializers import ResidentSerializer, EventSerializer, LocationSerializer
+from .serializers import ResidentSerializer, EventSerializer, LocationSerializer,VolunteeringEventSerializer
 from drf_spectacular.utils import extend_schema, OpenApiExample
-
+from VolunteerActivity.models import VolunteeringEvent
 
 class VillageNewsAPIView(APIView):
 
@@ -71,22 +71,28 @@ class VillageNewsAPIView(APIView):
         # Query related data
         residents = Resident.objects.filter(village=village, is_deleted=False)
         events = Event.objects.filter(village=village)
+        volunteering_events = VolunteeringEvent.objects.filter(village=village)
+
 
         # Serialize
         # resident_serializer = ResidentSerializer(residents, many=True)
         event_serializer = EventSerializer(events, many=True)
         village_serializer = LocationSerializer(village)
+        volunteering_serializer=VolunteeringEventSerializer(volunteering_events, many=True)
 
         # Build response
         response_data = {
 
             "success": True,
             "message": f"all information of {village.village} retrived well",
-            "data ": {
+            "data": {
             "total_residents": residents.count(),
             "total_events": events.count(),        
+            "total_volunteering_events": volunteering_events.count(),
             "village": village_serializer.data,
             "events": event_serializer.data,
+            "volunteering_events": volunteering_serializer.data,
+
             }
         }
 

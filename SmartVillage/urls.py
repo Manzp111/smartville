@@ -15,12 +15,12 @@ urlpatterns = [
     path('api/alert/', include('alert.urls')),
 
     path('',include('event.urls')),
-
-    path('',include('Location.urls')),
+    path('',include('Village.urls')),
     path('',include("Resident.urls")),
     path('',include('villagesInfo.urls')),
     path("",include("VolunteerActivity.urls")),
-    # path('',include("vistor.urls")),
+    path("",include("team_contact.urls")),
+    path('',include("vistor.urls")),
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     # Optional UI:
     path('api/schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),

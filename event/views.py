@@ -22,7 +22,8 @@ from rest_framework import status
 from .models import Event
 from .serializers import EventSerializer
 from rest_framework.permissions import AllowAny
-
+from rest_framework.pagination import PageNumberPagination
+from django_filters.rest_framework import DjangoFilterBackend
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -100,6 +101,16 @@ class EventsByVillageAPIView(APIView):
         events = Event.objects.filter(village=village).order_by("-date")
         event_serializer = EventSerializer(events, many=True)
 
+        leader_data = None
+        if village.leader:
+            leader_data = {
+                "user_id": village.leader.user_id,
+                "first_name": village.leader.person.first_name,
+                "last_name": village.leader.person.last_name,
+                "email": village.leader.email,
+                "phone_number": village.leader.person.phone_number,
+            }
+
         response_data = {
             "success":True,
             "message":f"event of {village.village} of retrived well",
@@ -112,13 +123,8 @@ class EventsByVillageAPIView(APIView):
                 "cell":village.cell,
                 "villages_name":village.village,
                 "village_id": str(village.village_id),
-                "village_leader":{
-                    "user_id":village.leader.user_id,
-                    "first_name":village.leader.person.first_name,
-                    "last_name":village.leader.person.last_name,
-                    "email":village.leader.email,
-                    "phone_number":village.leader.person.phone_number,
-                },
+                "village_leader":leader_data,
+         
             },
             "events": event_serializer.data
             }
@@ -145,7 +151,7 @@ class EventViewSet(EventRolePermissionMixin, viewsets.ModelViewSet):
         try:
             # Get the resident linked to this user
             resident = Resident.objects.get(person__user=user, is_deleted=False)
-            village = resident.Village
+            village = resident.village
         except Resident.DoesNotExist:
             village = None  # or raise an error if you want to enforce a resident
         serializer.save(organizer=user, village=village)
@@ -227,8 +233,6 @@ class EventViewSet(EventRolePermissionMixin, viewsets.ModelViewSet):
                     "image_url": "null",
                     "status": "PENDING",
                     "created_at": "2025-09-13T15:31:21.848041+02:00",
-                    
-    
 
 
                 }
@@ -236,6 +240,8 @@ class EventViewSet(EventRolePermissionMixin, viewsets.ModelViewSet):
             )
         ],
     )
+
+
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
         page = self.paginate_queryset(queryset)
@@ -246,29 +252,11 @@ class EventViewSet(EventRolePermissionMixin, viewsets.ModelViewSet):
         serializer = self.get_serializer(queryset, many=True)
         return success_response(data=serializer.data, message="Events retrieved successfully")
 
-    @extend_schema(
-        responses={200: EventSerializer},
-        summary="retriving one even by id"
-    )
-    def retrieve(self, request, *args, **kwargs):
-        instance = self.get_object()
-        serializer = self.get_serializer(instance)
-        return success_response(
-            data=serializer.data,
-            message="Event retrieved successfully"
-        )
-
     @extend_schema(exclude=True)
     def update(self, request, *args, **kwargs):
             raise MethodNotAllowed("PUT", detail="Updating events is disabled.")
 
 
-
-    @extend_schema(
-        responses={204: OpenApiResponse(description="Event deleted successfully")},
-        summary="delete event by id"
-
-    )
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
         self.perform_destroy(instance)
@@ -333,3 +321,34 @@ class EventViewSet(EventRolePermissionMixin, viewsets.ModelViewSet):
         kwargs['partial'] = True
         return super().perform_update(request, *args, **kwargs)
     
+
+
+class EventViewSetlist(viewsets.ViewSet):
+     
+    def list(self, request, village_id=None):
+        """List volunteering events of a specific village"""
+        try:
+            village = Village.objects.get(village_id=village_id)
+        except Village.DoesNotExist:
+            return Response({"detail": "Village not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        volunter_activity = Event.objects.filter(village=village)
+        paginator = PageNumberPagination()
+        paginator.page_size = request.query_params.get("page_size", 10)  # allow custom page size
+        result_page = paginator.paginate_queryset(volunter_activity, request)
+        serializer = EventSerializer(volunter_activity, many=True)
+        return paginator.get_paginated_response({
+            "status": "success",
+            "message": f"Events for village {village.village}",
+            
+            "count": len(serializer.data),
+            "village":{
+                "village_id":village.village_id,
+                "province":village.province,
+                "district":village.district,
+                "sector":village.sector,
+                "cell":village.cell,
+                "village":village.village,
+            },
+            "data": serializer.data
+        })

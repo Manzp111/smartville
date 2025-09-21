@@ -1,8 +1,8 @@
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework import serializers
 from account.models import User 
+from Resident.models import Resident
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
-    
     username_field = 'phone_number'
 
     def validate(self, attrs):
@@ -38,6 +38,7 @@ class UserSerializer(serializers.ModelSerializer):
     gender = serializers.CharField(source='person.gender', read_only=True)
     national_id = serializers.CharField(source='person.national_id', read_only=True)
     person_type = serializers.CharField(source='person.person_type', read_only=True)
+    village = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -50,5 +51,21 @@ class UserSerializer(serializers.ModelSerializer):
             "last_name",
             "gender",
             "national_id",
-            "person_type"
+            "person_type",
+            "village"
         ]
+    def get_village(self, obj):
+        """Return the village of this user if they are a resident."""
+        resident = Resident.objects.filter(person=obj.person, is_deleted=False).first()
+        if resident:
+            return {
+                "village_id": str(resident.village.village_id),
+                "name": resident.village.village,
+                "cell": resident.village.cell,
+                "sector": resident.village.sector,
+                "district": resident.village.district,
+                "province": resident.village.province,
+                "status": resident.status
+            }
+        return None
+
