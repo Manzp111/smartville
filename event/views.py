@@ -434,69 +434,98 @@ class EventPagination(PageNumberPagination):
     page_query_param = "page"        
 
 
+import django_filters
+from .models import Event
 
-class EventViewSetlist(viewsets.ViewSet):
+class EventFilter(django_filters.FilterSet):
+    date_from = django_filters.DateFilter(field_name="date", lookup_expr="gte")
+    date_to = django_filters.DateFilter(field_name="date", lookup_expr="lte")
+    start_time_from = django_filters.TimeFilter(field_name="start_time", lookup_expr="gte")
+    end_time_to = django_filters.TimeFilter(field_name="end_time", lookup_expr="lte")
+
+    class Meta:
+        model = Event
+        fields = [
+            "status",
+            "category",
+            "type",
+            "organizer",
+            "village",
+        ]
+
+from .models import TYPE_CHOICES
+class EventViewSetlist(viewsets.ReadOnlyModelViewSet):
     """
-    ViewSet to list events of a specific village with filters and pagination
+    ViewSet to list events of a specific village with filters, searching, and pagination
     """
+
+    serializer_class = EventSerializer
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_class = EventFilter
+
+    # Searching in text fields
+    search_fields = ["title", "description", "exact_place_of_village"]
+
+    # Ordering fields
+    ordering_fields = ["date", "start_time", "end_time", "created_at"]
+    ordering = ["-date"]
 
     @extend_schema(
         summary="Retrieve events of a specific village",
-        description="Fetch events by village ID. Supports optional filtering by status and category.",
+        description="Fetch events by village ID with advanced filtering, searching, and pagination.",
         parameters=[
             OpenApiParameter(
                 name="status",
                 description="Filter by event status",
                 required=False,
                 type=OpenApiTypes.STR,
-                enum=[choice[0] for choice in STATUS_CHOICES],  # 🔹 dropdown
+                enum=[choice[0] for choice in STATUS_CHOICES],
             ),
             OpenApiParameter(
                 name="category",
                 description="Filter by event category",
                 required=False,
                 type=OpenApiTypes.STR,
-                enum=[choice[0] for choice in CATEGORY_CHOICES],  # 🔹 dropdown
+                enum=[choice[0] for choice in CATEGORY_CHOICES],
             ),
-            OpenApiParameter(name="page", description="Page number for pagination", required=False, type=OpenApiTypes.INT),
-            OpenApiParameter(name="limit", description="Number of items per page", required=False, type=OpenApiTypes.INT),
+            OpenApiParameter(
+                name="type",
+                description="Filter by event type",
+                required=False,
+                type=OpenApiTypes.STR,
+                enum=[choice[0] for choice in TYPE_CHOICES],
+            ),
+            OpenApiParameter(name="date_from", description="Filter events starting from this date", type=OpenApiTypes.DATE),
+            OpenApiParameter(name="date_to", description="Filter events up to this date", type=OpenApiTypes.DATE),
+            OpenApiParameter(name="search", description="Search in title, description, or place", type=OpenApiTypes.STR),
+            OpenApiParameter(name="ordering", description="Order by date/start_time/end_time/created_at", type=OpenApiTypes.STR),
+            OpenApiParameter(name="page", description="Page number for pagination", type=OpenApiTypes.INT),
+            OpenApiParameter(name="limit", description="Number of items per page", type=OpenApiTypes.INT),
         ],
     )
-    def list(self, request, village_id=None):
-        """List events of a specific village with optional filters (status, category)"""
+    def list(self, request, village_id=None, *args, **kwargs):
+        """List events of a specific village with filters, search and pagination"""
 
-        # 🔹 Validate village existence
+        # ✅ Validate village
         try:
             village = Village.objects.get(village_id=village_id)
         except Village.DoesNotExist:
             return Response(
-                {
-                    "success": False,
-                    "message": "Village not found",
-                    "data": [],
-                    "meta": {}
-                },
+                {"success": False, "message": "Village not found", "data": [], "meta": {}},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        # 🔹 Base queryset
+        # ✅ Base queryset
         queryset = Event.objects.filter(village=village)
 
-        # 🔹 Apply filters
-        status_param = request.query_params.get("status")
-        category_param = request.query_params.get("category")
+        # ✅ Apply filters, search, ordering
+        queryset = self.filter_queryset(queryset)
 
-        if status_param:
-            queryset = queryset.filter(status=status_param.upper())
-        if category_param:
-            queryset = queryset.filter(category=category_param)
-
-        # 🔹 Pagination
+        # ✅ Pagination
         paginator = EventPagination()
         page = paginator.paginate_queryset(queryset, request)
-        serializer = EventSerializer(page, many=True)
+        serializer = self.get_serializer(page, many=True)
 
-        # 🔹 Response structure
         return Response({
             "success": True,
             "message": f"Events for village {village.village} retrieved successfully",
