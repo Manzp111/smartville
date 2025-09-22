@@ -10,9 +10,9 @@ urlpatterns = [
      path('', TemplateView.as_view(template_name='home/home.html'), name='home'),
     path('',include('account.urls')),
 
-    path('api/event/',include('event.urls')),
-    path('api/complaint/', include('complaint.urls')),
-    path('api/alert/', include('alert.urls')),
+    # path('api/event/',include('event.urls')),
+    path('complaint/', include('complaint.urls')),
+    path('alert/', include('alert.urls')),
 
     path('',include('event.urls')),
     path('',include('Village.urls')),

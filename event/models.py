@@ -84,7 +84,7 @@ class Event(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     village = models.ForeignKey(Village, on_delete=models.CASCADE)
 
-    village = models.ForeignKey(Location, on_delete=models.CASCADE, related_name='events')
+    village = models.ForeignKey(Village, on_delete=models.CASCADE, related_name='events')
 
     def __str__(self):
         return f"{self.title} ({self.date})"
