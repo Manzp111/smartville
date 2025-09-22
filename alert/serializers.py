@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from .models import CommunityAlert
 from account.serializers import PersonSerializer
-from Location.serializers import LocationSerializer
+from Village.serializers import LocationSerializer
 from account.models import User
 
 class UserListSerializer(serializers.ModelSerializer):
@@ -42,7 +42,7 @@ class CommunityAlertSerializer(serializers.ModelSerializer):
         from Resident.models import Resident
         try:
             resident = Resident.objects.get(person__user=user, is_deleted=False)
-            village = resident.location
+            village = resident.village
         except Resident.DoesNotExist:
             raise serializers.ValidationError("You must be assigned to a village to report an alert.")
         validated_data["reporter"] = user
