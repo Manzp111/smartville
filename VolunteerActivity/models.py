@@ -35,7 +35,7 @@ class VolunteeringEvent(models.Model):
 
     # end_time = models.TimeField()
     capacity = models.PositiveIntegerField(default=10)
-    village = models.ForeignKey(Village, on_delete=models.CASCADE, related_name="events")
+    village = models.ForeignKey(Village, on_delete=models.CASCADE, related_name="volunteer_events")
     organizer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="organizer_of_volunteer_events")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="DRAFT")
     rejection_reason = models.TextField(blank=True, null=True)

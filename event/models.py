@@ -1,5 +1,6 @@
 import uuid
 from django.db import models
+from account.models import Person
 from django.conf import settings
 from Village.models import Village
 
@@ -83,5 +84,19 @@ class Event(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     village = models.ForeignKey(Village, on_delete=models.CASCADE)
 
+    village = models.ForeignKey(Village, on_delete=models.CASCADE, related_name='events')
+
     def __str__(self):
         return f"{self.title} ({self.date})"
+    
+
+class EventAttendance(models.Model):
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='attendees')
+    person = models.ForeignKey(Person, on_delete=models.CASCADE, related_name='events_joined')
+    joined_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('event','person')
+
+        def __str__(self):
+            return f"{self.person} joined {self.event}"

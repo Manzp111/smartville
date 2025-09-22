@@ -183,7 +183,7 @@ class LeaderViewSet(mixins.RetrieveModelMixin,
     # List all leaders (GET /leaders/)
     # -------------------------------
     @extend_schema(
-        summary="List all village leaderss",
+        summary="List all village leaders",
         description="Retrieve a list of all village leaders. This endpoint is accessible to any user.",
 
         parameters=[

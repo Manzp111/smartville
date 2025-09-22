@@ -35,6 +35,8 @@ INSTALLED_APPS = [
     # 'django_celery_beat',
     'corsheaders',
     'django_filters',
+     'alert',
+     'complaint',
     
     # Local apps
     'account',
