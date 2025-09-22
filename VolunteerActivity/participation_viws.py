@@ -13,7 +13,7 @@ from drf_spectacular.types import OpenApiTypes
 from .models import VolunteerParticipation, VolunteeringEvent
 from .participation_serializers import VolunteerParticipationSerializer, VolunteerParticipationCreateSerializer,BulkParticipationUpdateSerializer
 
-
+from rest_framework.decorators import action
 # ---------------- Custom Paginator ----------------
 class ParticipationPagination(PageNumberPagination):
     """
@@ -115,58 +115,9 @@ class VolunteerParticipationViewSet(viewsets.ModelViewSet):
         Creates a participation request for a volunteering event.
         """
         serializer = self.get_serializer(data=request.data, context={'request': request})
-        try:
-            serializer.is_valid(raise_exception=True)
-            user = request.user
-            event = serializer.validated_data['event']
-
-            # ---------------- Validation ----------------
-            # Check if user already joined
-            if event.participations.filter(user=user).exists():
-                return Response(
-                    {"success": False, "message": "You cannot join this event twice."},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            # Check user's villages
-            user_village_ids = []
-            if getattr(user, 'person', None):
-                residencies = user.person.residencies.filter(is_deleted=False)
-                user_village_ids = [str(r.village.village_id) for r in residencies]
-
-            # Compare as string to avoid UUID vs str mismatch
-            if str(event.village.village_id) not in user_village_ids:
-                return Response(
-                    {"success": False, "message": "You cannot join an event outside your village."},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            # Event must be approved
-            if event.status != 'APPROVED':
-                return Response(
-                    {"success": False, "message": "You cannot join an event that is not approved."},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            # ---------------- Create Participation ----------------
-            with transaction.atomic():
-                participation, created = VolunteerParticipation.objects.get_or_create(
-                    user=user,
-                    event=event,
-                    defaults={'notes': serializer.validated_data.get('notes', '')}
-                )
-
-            output_serializer = VolunteerParticipationSerializer(participation)
-            return Response({
-                "success": True,
-                "message": "Participation request created successfully",
-                "data": output_serializer.data
-            }, status=status.HTTP_201_CREATED)
-
-        except serializers.ValidationError as e:
-            detail = e.detail
-
+        if not serializer.is_valid():
             # Extract first error message
+            detail = serializer.errors
             if isinstance(detail, dict):
                 detail = list(detail.values())[0]
             if isinstance(detail, list):
@@ -174,8 +125,19 @@ class VolunteerParticipationViewSet(viewsets.ModelViewSet):
 
             return Response({
                 "success": False,
-                "message": str(detail)
+                "message": str(detail),
+                "data": None
             }, status=status.HTTP_400_BAD_REQUEST)
+
+        participation = serializer.save()
+        output_serializer = VolunteerParticipationSerializer(participation)
+
+        return Response({
+            "success": True,
+            "message": "Participation request created successfully",
+            "data": output_serializer.data
+        }, status=status.HTTP_201_CREATED)
+
 
     # ---------------- LIST PARTICIPATIONS ----------------
     STATUS_CHOICES = ['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED']
@@ -226,6 +188,21 @@ class VolunteerParticipationViewSet(viewsets.ModelViewSet):
 
     # ---------------- APPROVE OR REJECT SINGLE PARTICIPATION ----------------
     @extend_schema(
+        summary="partial update it support multiple approve or reject",
+        examples=[
+            OpenApiExample(
+                name="approve or reject",
+                value={
+                    
+                "participation_ids": [
+                    "c87a5c2e-1f14-4c26-9b43-6c77e0e3f3e2",
+                    "d42b9f15-4ab7-4c27-b5f8-6a8b1f7e0d11"
+                ],
+                "status": "REJECTED"
+
+                }
+            )
+        ],
         request=BulkParticipationUpdateSerializer,
         responses={
             200: VolunteerParticipationSerializer(many=True),
@@ -273,88 +250,107 @@ class VolunteerParticipationViewSet(viewsets.ModelViewSet):
         }, status=status.HTTP_200_OK)
 
     # ---------------- BULK APPROVE/REJECT PARTICIPATIONS ----------------
-    @extend_schema(
-        summary="Bulk approve or reject participations",
-        description="""
-        Approve or reject multiple participation requests by providing their UUIDs and the desired status.
-        Permissions: Organizer of the event, village leader, or admin only.
-        """,
-        parameters=[
-            OpenApiParameter(
-                name='participation_ids',
-                description='List of participation UUIDs',
-                required=True,
-                type=OpenApiTypes.UUID,
-                many=True
-            ),
-            OpenApiParameter(
-                name='status',
-                description="Desired status: APPROVED or REJECTED",
-                required=True,
-                type=OpenApiTypes.STR
-            ),
-        ],
-        responses={200: OpenApiResponse(description="Bulk update result")}
-    )
-    def bulk_update_status(self, request, *args, **kwargs):
-        """
-        Bulk approve or reject participations.
-        """
-        participation_ids = request.data.get('participation_ids')
-        new_status = request.data.get('status')
+    # @extend_schema(
+    #     summary="Bulk approve or reject participations",
+    #     description="""
+    #     Approve or reject multiple participation requests by providing their UUIDs and the desired status.
+    #     Permissions: Organizer of the event, village leader, or admin only.
+    #     """,
+    #     parameters=[
+    #         OpenApiParameter(
+    #             name='participation_ids',
+    #             description='List of participation UUIDs',
+    #             required=True,
+    #             type=OpenApiTypes.UUID,
+    #             many=True
+    #         ),
+    #         OpenApiParameter(
+    #             name='status',
+    #             description="Desired status: APPROVED or REJECTED",
+    #             required=True,
+    #             type=OpenApiTypes.STR
+    #         ),
+    #     ],
+    #     responses={200: OpenApiResponse(description="Bulk update result")},
+    #     examples=[
+    #         OpenApiExample(
+    #             name="approve or reject",
+    #             value={
+                    
+    #             "participation_ids": [
+    #                 "c87a5c2e-1f14-4c26-9b43-6c77e0e3f3e2",
+    #                 "d42b9f15-4ab7-4c27-b5f8-6a8b1f7e0d11"
+    #             ],
+    #             "status": "REJECTED"
 
-        if not participation_ids or not isinstance(participation_ids, list):
-            return Response({"success": False, "message": "participation_ids must be a list of UUIDs"}, status=400)
+    #             }
+    #         )
+    #     ],
 
-        if new_status not in ['APPROVED', 'REJECTED']:
-            return Response({"success": False, "message": "status must be 'APPROVED' or 'REJECTED'."}, status=400)
+        
+    # )
+    # @action(detail=False, methods=["patch"], url_path="bulk-update-status")
 
-        participations = VolunteerParticipation.objects.filter(participation_id__in=participation_ids)
+    # def bulk_update_status(self, request, *args, **kwargs):
+    #     """
+    #     Bulk approve or reject participations.
+    #     """
+    #     participation_ids = request.data.get('participation_ids')
+    #     new_status = request.data.get('status')
 
-        if not participations.exists():
-            return Response({"success": False, "message": "No participations found for the provided IDs"}, status=404)
+    #     if not participation_ids or not isinstance(participation_ids, list):
+    #         return Response({"success": False, "message": "participation_ids must be a list of UUIDs"}, status=400)
 
-        updated = []
-        skipped = []
+    #     if new_status not in ['APPROVED', 'REJECTED']:
+    #         return Response({"success": False, "message": "status must be 'APPROVED' or 'REJECTED'."}, status=400)
 
-        for participation in participations:
-            user = request.user
-            if not (participation.event.organizer == user or participation.event.village.leader == user or user.role == 'admin'):
-                skipped.append(str(participation.participation_id))
-                continue
-            participation.status = new_status
-            participation.approved_at = timezone.now()
-            participation.save()
-            updated.append(str(participation.participation_id))
+    #     participations = VolunteerParticipation.objects.filter(participation_id__in=participation_ids)
 
-        return Response({
-            "success": True,
-            "message": f"{new_status} status applied successfully",
-            "updated_participations": updated,
-            "skipped_participations": skipped
-        })
+    #     if not participations.exists():
+    #         return Response({"success": False, "message": "No participations found for the provided IDs"}, status=404)
 
-    # ---------------- COUNT APPROVED ----------------
-    @extend_schema(
-        summary="Count approved participations",
-        description="Returns number of approved participations for a given event UUID.",
-        parameters=[
-            OpenApiParameter(
-                name='volunteer_id',
-                description='UUID of the volunteering event',
-                required=True,
-                type=OpenApiTypes.UUID
-            ),
-        ],
-        responses={200: OpenApiResponse(description="Approved participations count")}
-    )
-    def approved_count(self, request, *args, **kwargs):
-        """
-        Count approved participations for a specific volunteering event.
-        """
-        event_id = request.query_params.get('volunteer_id')
-        if not event_id:
-            return Response({"success": False, "message": "Please provide volunteer_id"}, status=400)
+    #     updated = []
+    #     skipped = []
 
-        count = VolunteerParticipation.objects.filter(event__volunteer_id=event_id, status='APPROVED').count()
-        return Response({"success": True, "approved_count": count})
+    #     for participation in participations:
+    #         user = request.user
+    #         if not (participation.event.organizer == user or participation.event.village.leader == user or user.role == 'admin'):
+    #             skipped.append(str(participation.participation_id))
+    #             continue
+    #         participation.status = new_status
+    #         participation.approved_at = timezone.now()
+    #         participation.save()
+    #         updated.append(str(participation.participation_id))
+
+    #     return Response({
+    #         "success": True,
+    #         "message": f"{new_status} status applied successfully",
+    #         "updated_participations": updated,
+    #         "skipped_participations": skipped
+    #     })
+
+    # # ---------------- COUNT APPROVED ----------------
+    # @extend_schema(
+    #     summary="Count approved participations",
+    #     description="Returns number of approved participations for a given event UUID.",
+    #     parameters=[
+    #         OpenApiParameter(
+    #             name='volunteer_id',
+    #             description='UUID of the volunteering event',
+    #             required=True,
+    #             type=OpenApiTypes.UUID
+    #         ),
+    #     ],
+    #     responses={200: OpenApiResponse(description="Approved participations count")}
+    # )
+    # @action(detail=False, methods=["get"], url_path="approved-count")
+    # def approved_count(self, request, *args, **kwargs):
+    #     """
+    #     Count approved participations for a specific volunteering event.
+    #     """
+    #     event_id = request.query_params.get('volunteer_id')
+    #     if not event_id:
+    #         return Response({"success": False, "message": "Please provide volunteer_id"}, status=400)
+
+    #     count = VolunteerParticipation.objects.filter(event__volunteer_id=event_id, status='APPROVED').count()
+    #     return Response({"success": True, "approved_count": count})

@@ -45,7 +45,7 @@ class VolunteerParticipationCreateSerializer(serializers.ModelSerializer):
 
         # Cannot join own event
         if event.organizer == user:
-            raise serializers.ValidationError({"event": "You cannot join your own event as a participant."})
+            raise serializers.ValidationError("You cannot join your own event as a participant.")
 
         # Cannot join twice
         if VolunteerParticipation.objects.filter(user=user, event=event).exists():
@@ -57,13 +57,11 @@ class VolunteerParticipationCreateSerializer(serializers.ModelSerializer):
 
         # Must belong to user's village
         user_village_ids = []
-        if hasattr(user, 'person') and user.person:
-            residencies = getattr(user.person, 'residencies', [])
-            if hasattr(residencies, 'all'):
-                residencies = residencies.all()  # queryset safe
-            user_village_ids = [r.village.village_id for r in residencies]
+        if getattr(user, 'person', None):
+            residencies = user.person.residencies.filter(is_deleted=False)
+            user_village_ids = [str(r.village.village_id) for r in residencies]
 
-        if event.village.village_id not in user_village_ids:
+        if str(event.village.village_id) not in user_village_ids:
             raise serializers.ValidationError("You cannot join an event outside your village.")
 
         return attrs
@@ -78,9 +76,11 @@ class VolunteerParticipationCreateSerializer(serializers.ModelSerializer):
         return participation
 
 
+
 from rest_framework import serializers
 
 class BulkParticipationUpdateSerializer(serializers.Serializer):
+    
     participation_ids = serializers.ListField(
         child=serializers.UUIDField(),
         allow_empty=False,
