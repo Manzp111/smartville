@@ -18,9 +18,10 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class VillageSerializer(serializers.ModelSerializer):
+    leader=UserSerializer(read_only=True)
     class Meta:
         model = Village
-        fields = ['village_id', 'province', 'district', 'sector', 'cell', 'village']
+        fields = ['village_id', 'province', 'district', 'sector', 'cell', 'village',"leader"]
 
 
 class ResidentDetailSerializer(serializers.ModelSerializer):
@@ -33,5 +34,17 @@ class ResidentDetailSerializer(serializers.ModelSerializer):
         fields = [
             'resident_id', 'status', 'has_account',
             'person', 'village', 'added_by',
+            'created_at', 'updated_at', 'is_deleted', 'deleted_at'
+        ]
+
+class ResidentDetailsSerializer(serializers.ModelSerializer):
+    person = PersonSerializer()   
+    added_by = UserSerializer()
+
+    class Meta:
+        model = Resident
+        fields = [
+            'resident_id', 'status', 'has_account',
+            'person','added_by',
             'created_at', 'updated_at', 'is_deleted', 'deleted_at'
         ]

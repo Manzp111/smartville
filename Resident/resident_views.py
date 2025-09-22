@@ -87,3 +87,50 @@ class ResidentByUserView(generics.RetrieveAPIView):
                 "message": "Resident not found",
                 "data": None
             }, status=status.HTTP_404_NOT_FOUND)
+
+
+from Village.models import Village
+from .resident_serializers import VillageSerializer,ResidentDetailsSerializer
+class ResidentsByVillageView(generics.ListAPIView):
+    serializer_class = ResidentDetailsSerializer
+
+    @extend_schema(
+        summary="Get all residents of a specific village",
+        description="Retrieve a list of residents that belong to a given village using its `village_id`.",
+        # parameters=[
+        #     OpenApiParameter(name="village_id", description="UUID of the village", required=True, type=str),
+        # ],
+        responses={
+            200: ResidentDetailsSerializer(many=True),
+            404: {"type": "object", "properties": {"success": {"type": "boolean"}, "message": {"type": "string"}}},
+        }
+    )
+  
+
+    def get(self, request, village_id, *args, **kwargs):
+        try:
+            # Get village once
+            village = Village.objects.get(village_id=village_id)
+
+            # Fetch residents
+            residents = Resident.objects.filter(village=village, is_deleted=False)
+            resident_serializer = self.get_serializer(residents, many=True)
+
+            # Serialize village separately (you can reuse your VillageSerializer)
+            
+            village_serializer = VillageSerializer(village)
+
+            return Response({
+                "success": True,
+                "message": f"Residents of village {village.village} fetched successfully",
+                "village": village_serializer.data,
+                "residents": resident_serializer.data
+            }, status=status.HTTP_200_OK)
+
+        except Village.DoesNotExist:
+            return Response({
+                "success": False,
+                "message": "Village not found",
+                "village": None,
+                "residents": []
+            }, status=status.HTTP_404_NOT_FOUND)
