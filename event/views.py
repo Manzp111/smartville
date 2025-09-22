@@ -325,17 +325,19 @@ class EventViewSet(EventRolePermissionMixin, viewsets.ModelViewSet):
 
 
     @extend_schema(
-        responses={204: OpenApiResponse(description="Event deleted successfully")},
+        responses={200: OpenApiResponse(description="Event deleted successfully")},
         summary="delete event by id"
 
     )
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
         self.perform_destroy(instance)
-        return success_response(
-            data=instance,
-            message="Event deleted successfully",
-            status_code=status.HTTP_204_NO_CONTENT
+        return Response({
+            "success":True,
+            "message":"event deleted well",
+        },
+  
+            status=status.HTTP_200_OK
         )
     @extend_schema(
         request=EventSerializer,  # request schema (all fields optional)
