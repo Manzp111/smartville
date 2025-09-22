@@ -11,8 +11,8 @@ urlpatterns = [
     path('',include('account.urls')),
 
     # path('api/event/',include('event.urls')),
-    path('complaint/', include('complaint.urls')),
-    path('alert/', include('alert.urls')),
+    path('', include('complaint.urls')),
+    path('', include('alert.urls')),
 
     path('',include('event.urls')),
     path('',include('Village.urls')),
