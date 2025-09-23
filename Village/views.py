@@ -166,7 +166,9 @@ class LeaderViewSet(mixins.RetrieveModelMixin,
     ViewSet for managing village leaders.
     System admins can perform all actions except retrieving leaders (allowed for any authenticated user).
     """
-    queryset = User.objects.filter(role='leader', is_deleted=False)
+    # queryset = User.objects.filter(role='leader', is_deleted=False)
+    queryset  = User.objects.filter(led_villages__isnull=False)
+
     serializer_class = LeaderSerializer
     
     def get_permissions(self):
@@ -271,7 +273,7 @@ class LeaderViewSet(mixins.RetrieveModelMixin,
             OpenApiExample(
                 "Success Response Example",
                 value={
-                    "status": "success",
+                    "success": True,
                     "message": "Leaders retrieved successfully",
                     "count": 2,
                     "data": [
@@ -372,16 +374,17 @@ class LeaderViewSet(mixins.RetrieveModelMixin,
             # --------------------
             serializer = self.get_serializer(leaders, many=True)
             return Response({
-                "status": "success",
+                "success": True,
                 "message": "Leaders retrieved successfully",
                 "data": serializer.data,
-                 "meta":{
-                        "total": total,
-                        "page": page,
-                        "limit": limit,
-                        "totalPages": total_pages
-                        
-                 },
+                "meta": {
+                        "page": page,                 # current page
+                        "limit": limit,               # items per page
+                        "total": total,               # total records
+                        "total_pages": total_pages,   # total number of pages
+                        "has_next": page < total_pages,
+                        "has_prev": page > 1
+                    },
             }, status=status.HTTP_200_OK)
 
     # -------------------------------
