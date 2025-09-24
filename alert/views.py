@@ -6,6 +6,8 @@ from .utils import success_response, error_response
 from rest_framework import permissions
 from .mixins import AlertRolePermissionMixin
 from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.exceptions import MethodNotAllowed
+
 
 class CommunityAlertViewSet(AlertRolePermissionMixin, viewsets.ModelViewSet):
     queryset = CommunityAlert.objects.all().order_by("-created_at")
@@ -96,4 +98,17 @@ class CommunityAlertViewSet(AlertRolePermissionMixin, viewsets.ModelViewSet):
     )
     def partial_update(self, request, *args, **kwargs):
         kwargs['partial'] = True
-        return super().perform_update(request, *args, **kwargs)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        if serializer.is_valid():
+            self.perform_update(serializer)
+            return success_response(
+                data=serializer.data,
+                message="Alert updated successfully",
+                status_code=status.HTTP_200_OK
+            )
+        return error_response(
+            errors=serializer.errors,
+            status_code=status.HTTP_400_BAD_REQUEST
+        )
+        # return super().perform_update(request, *args, **kwargs)
