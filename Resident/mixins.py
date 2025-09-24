@@ -81,9 +81,9 @@ class VillageRolePermissionMixin:
                 village_name=f"{Village.village}"
             )
 
-    @extend_schema(exclude=True)
-    def perform_update(self, serializer):
-        raise MethodNotAllowed("PUT", detail="Updating events is disabled.")
+    # @extend_schema(exclude=True)
+    # def perform_update(self, serializer):
+    #     raise MethodNotAllowed("PUT", detail="Updating events is disabled.")
 
     def perform_destroy(self, instance):
         user = self.request.user

@@ -6,18 +6,26 @@ from .utils import success_response, error_response
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.exceptions import MethodNotAllowed, NotAuthenticated
 from Village.models import Village
+from .mixins import ComplaintRolePermissionMixin
+from rest_framework.permissions import IsAuthenticated,AllowAny
+from rest_framework.response import Response
 
-class ComplaintViewSet(viewsets.ModelViewSet):
+class ComplaintViewSet(viewsets.ModelViewSet, ComplaintRolePermissionMixin):
     queryset = Complaint.objects.all().order_by('-date_submitted')
     serializer_class = ComplaintSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['status', 'location', 'date_submitted']
     ordering = ['-date_submitted']
 
+    # def get_permissions(self):
+    #     if self.action in ['update', 'partial_update', 'destroy', 'list']:
+    #         return [permissions.IsAdminUser()]
+    #     return [permissions.IsAuthenticated()]
+
     def get_permissions(self):
-        if self.action in ['update', 'partial_update', 'destroy', 'list']:
-            return [permissions.IsAdminUser()]
-        return [permissions.IsAuthenticated()]
+        if self.action == "retrieve":
+            return [AllowAny()]   # 👈 public access only for retrieve
+        return [IsAuthenticated()]
 
     @extend_schema(
         summary="Create complaint",
@@ -53,7 +61,7 @@ class ComplaintViewSet(viewsets.ModelViewSet):
                     errors="You must be assigned to a village to submit a complaint.",
                     status_code=status.HTTP_400_BAD_REQUEST
                 )
-            serializer.save(complainant=user.person, location=village) #""", location=village"""
+            serializer.save(complainant=user, location=village) #""", location=village"""
             return success_response(
                 data=serializer.data,
                 message="Complaint created successfully",
@@ -78,17 +86,20 @@ class ComplaintViewSet(viewsets.ModelViewSet):
             return self.get_paginated_response(data)
         return success_response(data=data, message="Complaints retrieved successfully")
 
-    @extend_schema(exclude=True)
-    def update(self, request, *args, **kwargs):
-        raise MethodNotAllowed("PUT", detail="Updating complaints is disabled.")
+    # @extend_schema(exclude=True)
+    # def update(self, request, *args, **kwargs):
+    #     raise MethodNotAllowed("PUT", detail="Updating complaints is disabled.")
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
         self.perform_destroy(instance)
-        return success_response(
-            data=None,
-            message="Complaint deleted successfully",
-            status_code=status.HTTP_204_NO_CONTENT
+        return Response(
+            {
+            "success":True,
+            "message":"Complaint deleted successfully",
+        
+        },
+            status=status.HTTP_200_OK
         )
 
     @extend_schema(

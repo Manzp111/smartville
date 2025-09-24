@@ -48,12 +48,26 @@ class ResidentSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["added_by", "added_by_email", "status", "is_deleted", "deleted_at", "created_at", "updated_at"]
-        def create(self, validated_data):
+    def create(self, validated_data):
             person_data = validated_data.pop('person')
             person = Person.objects.create(**person_data)
             Village = self.context.get('Village')
             user = self.context.get('user')
             return Resident.objects.create(person=person, Village=Village, added_by=user, **validated_data)
+        
+    def update(self, instance, validated_data):
+            person_data = validated_data.pop('person', None)
+            if person_data:
+                # Update the nested Person object
+                for attr, value in person_data.items():
+                    setattr(instance.person, attr, value)
+                instance.person.save()
+            
+            # Update Resident fields
+            for attr, value in validated_data.items():
+                setattr(instance, attr, value)
+            instance.save()
+            return instance
                 
 
 
