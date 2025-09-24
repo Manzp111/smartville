@@ -101,6 +101,9 @@ from .tasks import notify_village_leaders_of_migration
         }
     )
 )
+
+
+
 class ResidentViewSet(VillageRolePermissionMixin,viewsets.ModelViewSet):
     """
     ViewSet for managing Resident records with role-based access control.
@@ -112,6 +115,7 @@ class ResidentViewSet(VillageRolePermissionMixin,viewsets.ModelViewSet):
     serializer_class = ResidentSerializer
     permission_classes = [IsVerifiedUser]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    lookup_field = 'resident_id'
     filterset_fields = ["status","person__first_name","created_at"]
     search_fields = ["person__full_name"]
     ordering_fields = ["created_at", "updated_at"]
@@ -251,23 +255,26 @@ class ResidentViewSet(VillageRolePermissionMixin,viewsets.ModelViewSet):
     @extend_schema(
         summary="Approve or reject resident status",
         description="""Allows village leaders and admins to approve or reject resident join requests.
-        
+
         **Available Status Values:**
         - APPROVED: Resident is officially accepted into the village
         - REJECTED: Resident's join request is denied
         - PENDING: Initial status (default)
-        
+
         **Permissions:** Village leaders (for their village) and admins only""",
         request=ResidentStatusSerializer,
         examples=[
             OpenApiExample(
                 "Approve Request",
-                summary="Example to approve a resident",
-                value={"status": "APPROVED"},
+                summary="Example to approve residents",
+                value={
+                    "resident_ids": ["51f5fa35-037f-4616-b0ee-e14ce4ba7738"],
+                    "status": "APPROVED"
+                },
                 request_only=True
             ),
             OpenApiExample(
-                "Reject Request", 
+                "Reject Request",
                 summary="Example to reject a resident",
                 value={"status": "REJECTED"},
                 request_only=True
@@ -277,21 +284,6 @@ class ResidentViewSet(VillageRolePermissionMixin,viewsets.ModelViewSet):
             200: OpenApiResponse(
                 response=ResidentSerializer,
                 description="Status updated successfully",
-                examples=[
-                    OpenApiExample(
-                        "Approval Success",
-                        value={
-                            "status": "success",
-                            "message": "Resident status updated",
-                            "data": {
-                                "id": 1,
-                                "status": "APPROVED",
-                                "person": {"id": 1, "full_name": "John Doe"},
-                                "Village": {"id": 123, "village": "Village A"}
-                            }
-                        }
-                    )
-                ]
             ),
             400: OpenApiResponse(description="Validation error - Invalid status value"),
             403: OpenApiResponse(description="Forbidden - User not authorized to update status"),
@@ -299,62 +291,69 @@ class ResidentViewSet(VillageRolePermissionMixin,viewsets.ModelViewSet):
         }
     )
     @action(detail=True, methods=["patch"], permission_classes=[IsLeaderOrAdmin], serializer_class=ResidentStatusSerializer)
-    def update_status(self, request):
-        resident_ids = request.data.get("resident_ids", [])
+    def update_status(self, request, *args, **kwargs):
+        resident_ids = request.data.get("resident_ids")
         new_status = request.data.get("status")
-        if not resident_ids or not new_status:
-            return error_response("resident_ids and status are required", 400)
-        queryset = Resident.objects.filter(id__in=resident_ids, is_deleted=False)
-        if not queryset.exists():
-            return error_response("No valid residents found to update", 404)
-        queryset.update(status=new_status)
 
-        serializer = self.get_serializer(queryset, many=True)
-        return success_response(serializer.data, f"Updated status of {queryset.count()} residents")
+        if not new_status:
+            return error_response("status is required", 400)
 
-        # resident = self.get_object()
-        # serializer = ResidentStatusSerializer(resident, data=request.data, partial=True)
-        # serializer.is_valid(raise_exception=True)
-        # serializer.save()
-        # return success_response(self.get_serializer(resident).data, "Resident status updated")
+        # Bulk update mode
+        if resident_ids:
+            queryset = Resident.objects.filter(resident_id__in=resident_ids, is_deleted=False)
 
-    # --------------------- Soft Delete ---------------------
-    @extend_schema(
-        summary="Soft delete a resident",
-        description="""Marks a resident as deleted without permanently removing the record.
-        
-        **Features:**
-        - Sets is_deleted flag to True
-        - Record remains in database for audit purposes
-        - Can be restored using the restore endpoint
-        - Doesn't affect related person/Village records
-        
-        **Permissions:** Village leaders (for their village) and admins only""",
-        responses={
-            200: OpenApiResponse(
-                description="Resident soft deleted successfully",
-                examples=[
-                    OpenApiExample(
-                        "Soft Delete Success",
-                        value={
-                            "status": "success", 
-                            "message": "Resident soft deleted successfully",
-                            "data": None
-                        }
-                    )
-                ]
-            ),
-            403: OpenApiResponse(description="Forbidden - User not authorized to delete"),
-            404: OpenApiResponse(description="Resident not found")
-        }
-    )
-    @action(detail=True, methods=["delete"], permission_classes=[IsLeaderOrAdmin])
+            # queryset = Resident.objects.filter(id__in=resident_ids, is_deleted=False)
+            if not queryset.exists():
+                return error_response("No valid residents found to update", 404)
+            queryset.update(status=new_status)
+            serializer = ResidentSerializer(queryset, many=True)
+            return success_response(serializer.data, f"Updated status of {queryset.count()} residents")
 
-
-    def soft_delete(self, request, pk=None):
+        # Single update mode
         resident = self.get_object()
-        resident.soft_delete()
-        return success_response(message="Resident soft deleted successfully")
+        serializer = ResidentStatusSerializer(resident, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return success_response(ResidentSerializer(resident).data, "Resident status updated")
+
+
+    # # --------------------- Soft Delete ---------------------
+    # @extend_schema(
+    #     summary="Soft delete a resident",
+    #     description="""Marks a resident as deleted without permanently removing the record.
+        
+    #     **Features:**
+    #     - Sets is_deleted flag to True
+    #     - Record remains in database for audit purposes
+    #     - Can be restored using the restore endpoint
+    #     - Doesn't affect related person/Village records
+        
+    #     **Permissions:** Village leaders (for their village) and admins only""",
+    #     responses={
+    #         200: OpenApiResponse(
+    #             description="Resident soft deleted successfully",
+    #             examples=[
+    #                 OpenApiExample(
+    #                     "Soft Delete Success",
+    #                     value={
+    #                         "status": "success", 
+    #                         "message": "Resident soft deleted successfully",
+    #                         "data": None
+    #                     }
+    #                 )
+    #             ]
+    #         ),
+    #         403: OpenApiResponse(description="Forbidden - User not authorized to delete"),
+    #         404: OpenApiResponse(description="Resident not found")
+    #     }
+    # )
+    # @action(detail=True, methods=["delete"], permission_classes=[IsLeaderOrAdmin])
+
+
+    # def soft_delete(self, request, pk=None):
+    #     resident = self.get_object()
+    #     resident.soft_delete()
+    #     return success_response(message="Resident soft deleted successfully")
 
     # --------------------- Restore Soft-Deleted Resident ---------------------
     @extend_schema(
@@ -398,28 +397,7 @@ class ResidentViewSet(VillageRolePermissionMixin,viewsets.ModelViewSet):
         resident.restore()
         return success_response(self.get_serializer(resident).data, "Resident restored successfully")
 
-    # --------------------- Override default methods for consistent responses ---------------------
-    # @extend_schema(
-    #     summary="List tttttttttttttttttttt residents",
-    #     description="Retrieve all residents the user has access to. Supports search, filtering, and pagination.",
-    #     parameters=[
-    #         OpenApiParameter(name='page', description='Page number', required=False, type=OpenApiTypes.INT),
-    #         OpenApiParameter(name='page_size', description='Number of items per page', required=False, type=OpenApiTypes.INT),
-    #     ],
-    #     responses={
-    #         200: OpenApiResponse(response=ResidentSerializer(many=True), description="Residents retrieved successfully"),
-    #         403: OpenApiResponse(description="Forbidden - User not authorized"),
-    #         500: OpenApiResponse(description="Internal server error")
-    #     }
-    # )
-    # def list(self, request, *args, **kwargs):
-    #     queryset = self.filter_queryset(self.get_queryset())
-    #     page = self.paginate_queryset(queryset)
-    #     if page is not None:
-    #         serializer = self.get_serializer(page, many=True)
-    #         return self.get_paginated_response(serializer.data)
-    #     serializer = self.get_serializer(queryset, many=True)
-    #     return success_response(serializer.data, "Residents retrieved successfully")
+  
 
     @extend_schema(
             summary="delete for admin"
