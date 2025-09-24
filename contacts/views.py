@@ -4,8 +4,17 @@ from rest_framework.response import Response
 from .models import Contact
 from .serializers import ContactSerializer
 from .permissions import IsLeaderOrAdmin
+from drf_spectacular.utils import extend_schema, extend_schema_view
 
 
+TAG = ["Village Contacts"]
+
+@extend_schema(
+    summary="List all contacts",
+    description="Retrieve all contacts. Optionally filter by `village_id` query parameter.",
+    responses={200: ContactSerializer(many=True)},
+    tags=TAG
+)
 class ContactListView(generics.ListAPIView):
     queryset = Contact.objects.all()
     serializer_class = ContactSerializer
@@ -23,6 +32,13 @@ class ContactListView(generics.ListAPIView):
         )
 
 
+@extend_schema(
+    summary="Create a new contact",
+    description="Create a contact. Only leaders or admins can create contacts.",
+    request=ContactSerializer,
+    responses={201: ContactSerializer},
+    tags=TAG
+)
 class ContactCreateView(generics.CreateAPIView):
     serializer_class = ContactSerializer
     permission_classes = [IsLeaderOrAdmin]
@@ -30,13 +46,45 @@ class ContactCreateView(generics.CreateAPIView):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save(created_by=request.user, village=request.user.village)
+
+        resident = request.user.person.residencies.first()
+        #serializer.save(created_by=request.user, village=request.user.village)
+        serializer.save(created_by=request.user, village=resident.village)
         return Response(
             {"status": "success", "message": "Contact created successfully", "data": serializer.data},
             status=status.HTTP_201_CREATED,
         )
 
 
+
+@extend_schema_view(
+    get=extend_schema(
+        summary="Retrieve a village contact",
+        description="Get contact by UUID.",
+        responses={200: ContactSerializer},
+        tags=TAG
+    ),
+    put=extend_schema(
+        summary="Update a village contact",
+        description="Update contact completely. Only leaders or admins can update.",
+        request=ContactSerializer,
+        responses={200: ContactSerializer},
+        tags=TAG
+    ),
+    patch=extend_schema(
+        summary="Partial update a village contact",
+        description="Partial update contact. Only leaders or admins can update.",
+        request=ContactSerializer,
+        responses={200: ContactSerializer},
+        tags=TAG
+    ),
+    delete=extend_schema(
+        summary="Delete a village contact",
+        description="Delete contact by UUID. Only leaders or admins can delete.",
+        responses={204: None},
+        tags=TAG
+    )
+)
 class ContactDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Contact.objects.all()
     serializer_class = ContactSerializer
