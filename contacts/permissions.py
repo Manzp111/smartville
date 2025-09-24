@@ -14,5 +14,5 @@ class IsLeaderOrAdmin(permissions.BasePermission):
 
         # For create/update/delete, check if user is leader or admin
         return request.user.is_authenticated and (
-            request.user.role in ["LEADER", "ADMIN"]
+            request.user.role in ["leader", "admin"]
         )
