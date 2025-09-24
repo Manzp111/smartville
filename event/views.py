@@ -413,7 +413,7 @@ class EventViewSet(EventRolePermissionMixin, viewsets.ModelViewSet):
     )
     def partial_update(self, request, *args, **kwargs):
         kwargs['partial'] = True
-        kwargs['partial'] = True
+        # kwargs['partial'] = True
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
