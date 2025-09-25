@@ -3,7 +3,7 @@ from .views import TeamMemberViewSet, ContactMessageViewSet
 from django.urls import path, include
 
 router = DefaultRouter()
-router.register(r'team', TeamMemberViewSet, basename='team')
+router.register(r'team/contact', TeamMemberViewSet, basename='team')
 router.register(r'contact', ContactMessageViewSet, basename='contact')
 
 urlpatterns = [
