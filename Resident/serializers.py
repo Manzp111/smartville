@@ -49,12 +49,23 @@ class ResidentSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["added_by", "added_by_email", "status", "is_deleted", "deleted_at", "created_at", "updated_at"]
     def create(self, validated_data):
-            person_data = validated_data.pop('person')
-            person = Person.objects.create(**person_data)
-            Village = self.context.get('Village')
-            user = self.context.get('user')
-            return Resident.objects.create(person=person, Village=Village, added_by=user, **validated_data)
+        person_data = validated_data.pop('person')
+        person = Person.objects.create(**person_data)
         
+        village = self.context.get('village')
+        user = self.context.get('user')
+
+        # Remove village if exists in validated_data
+        validated_data.pop('village', None)
+
+        return Resident.objects.create(
+            person=person,
+            village=village,
+            added_by=user,
+            **validated_data
+        )
+
+
     def update(self, instance, validated_data):
             person_data = validated_data.pop('person', None)
             if person_data:

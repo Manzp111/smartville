@@ -35,28 +35,42 @@ class VillageRolePermissionMixin:
 
         return qs.none()
 
+
+
     def perform_create(self, serializer):
         user = self.request.user
-        Village = None
+        village = None
 
-        # Determine Village based on role
-        if user.role in ["resident", "leader"]:
-            if hasattr(user, 'residencies') and user.residencies.exists():
-                Village = user.residencies.first().Village
-            elif hasattr(user, 'led_villages') and user.led_villages.exists():
-                Village = user.led_villages.first()
-            if not Village:
-                raise PermissionDenied("You must be assigned to a village to create a resident.")
+        # Determine the village based on role
+        if user.role == "resident":
+            if user.person:
+                active_residency = user.person.residencies.filter(is_deleted=False).first()
+                if active_residency:
+                    village = active_residency.village
+            if not village:
+                # Optionally allow specifying village explicitly
+                village = serializer.validated_data.get("village")
+                if not village:
+                    raise PermissionDenied("You must be assigned to a village or specify one to create a resident.")
+
+        elif user.role == "leader":
+            led_village = user.led_villages.first()  # leader can have only one village
+            if led_village:
+                village = led_village
+            else:
+                raise PermissionDenied("You must lead a village to create a resident.")
+
         elif user.role == "admin":
-            Village = serializer.validated_data.get("Village")
-            if not Village:
-                raise PermissionDenied("Admin must specify Village.")
+            village = serializer.validated_data.get("village")
+            if not village:
+                raise PermissionDenied("Admin must specify a village.")
 
         # Handle nested 'person' data
         person_data = serializer.validated_data.pop('person', None)
         if not person_data:
             raise PermissionDenied("Person data is required to create a resident.")
 
+        # Create a Person record
         person = Person.objects.create(
             first_name=person_data.get('first_name'),
             last_name=person_data.get('last_name'),
@@ -66,20 +80,13 @@ class VillageRolePermissionMixin:
             person_type='resident'
         )
 
-        # Save Resident with person, Village, added_by
+        # Save Resident with person, village, added_by
         resident = serializer.save(
             person=person,
-            Village=Village,
+            village=village,
             added_by=user
         )
 
-        # Notify village leader if exists
-        if Village and hasattr(Village, 'leader') and Village.leader and Village.leader.email:
-            send_new_resident_email.delay(
-                leader_email=Village.leader.email,
-                resident_name=f"{resident.person.first_name} {resident.person.last_name}",
-                village_name=f"{Village.village}"
-            )
 
     # @extend_schema(exclude=True)
     # def perform_update(self, serializer):
