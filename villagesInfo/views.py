@@ -69,9 +69,9 @@ class VillageNewsAPIView(APIView):
             return Response({"success": False, "message": "Village not found"}, status=status.HTTP_404_NOT_FOUND)
 
         # Query related data
-        residents = Resident.objects.filter(village=village, is_deleted=False)
-        events = Event.objects.filter(village=village)
-        volunteering_events = VolunteeringEvent.objects.filter(village=village)
+        residents = Resident.objects.filter(village=village, is_deleted=False, status="APPROVED")
+        events = Event.objects.filter(village=village,status="APPROVED")
+        volunteering_events = VolunteeringEvent.objects.filter(village=village,status="APPROVED")
 
 
         # Serialize

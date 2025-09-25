@@ -98,7 +98,7 @@ class EventsByVillageAPIView(APIView):
         except Village.DoesNotExist:
             return Response({"detail": "Village not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        events = Event.objects.filter(village=village).order_by("-date")
+        events = Event.objects.filter(village=village,status="APPROVED").order_by("-date")
         event_serializer = EventSerializer(events, many=True)
 
         leader_data = None
