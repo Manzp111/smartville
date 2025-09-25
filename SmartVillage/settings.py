@@ -17,7 +17,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG', 'False')=='True'
 ALLOWED_HOSTS = ["*"]
-
+  
 # APPLICATIONS
 INSTALLED_APPS = [
     'jazzmin',
@@ -176,8 +176,11 @@ CELERY_TIMEZONE = "Africa/Kigali"
 # CORS SETTINGS
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",   # Vite frontend
-    "http://127.0.0.1:5174",  
-     "https://smartville.onrender.com", # Optional
+    "http://127.0.0.1:5174", 
+    "http://127.0.0.1:3000",
+    "https://smartville.onrender.com",     
+     "https://smart-village-community-platform.vercel.app",
+     "https://smartvile.vercel.app",
 ]          # For development
 CORS_ALLOWED_ORIGINS_ALL=True
 

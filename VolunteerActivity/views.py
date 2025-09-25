@@ -1,7 +1,7 @@
 # volunteering/views.py
 
 from rest_framework import viewsets, status, filters
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated,AllowAny
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from drf_spectacular.utils import extend_schema, OpenApiExample, OpenApiResponse,OpenApiParameter, OpenApiTypes
@@ -65,6 +65,11 @@ class VolunteeringEventViewSet(viewsets.ModelViewSet):
     pagination_class = VolunteeringEventPagination
     filter_backends = [filters.SearchFilter]
     search_fields = ['title', 'description']
+
+    def get_permissions(self):
+        if self.action == "retrieve":
+            return [AllowAny()]   # 👈 public access only for retrieve
+        return [IsAuthenticated()]
 
     def perform_create(self, serializer):
         # Automatically set the organizer to the current user

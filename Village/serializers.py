@@ -79,8 +79,8 @@ class PromoteToLeaderSerializer(serializers.Serializer):
     def validate(self, data):
         try:
             user = User.objects.get(user_id=data['user_id'])
-            if user.role == 'leader':
-                raise serializers.ValidationError("User is already a leader")
+            if hasattr(user, "led_villages"):
+                raise serializers.ValidationError("This user is already a leader of another village")
         except User.DoesNotExist:
             raise serializers.ValidationError("User does not exist")
 
