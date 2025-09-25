@@ -3,7 +3,7 @@ from django.db import models
 from account.models import Person
 from django.conf import settings
 from Village.models import Village
-
+from django.core.exceptions import ValidationError
 
 STATUS_CHOICES = [
     ("PENDING", "Pending Approval"),
@@ -89,6 +89,13 @@ class Event(models.Model):
     def __str__(self):
         return f"{self.title} ({self.date})"
     
+    def clean(self):
+        # Prevent residents from setting APPROVED
+        if self.status == "APPROVED" and self.organizer.role == "resident":
+            raise ValidationError("Residents cannot approve events.")
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
 
 class EventAttendance(models.Model):
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='attendees')

@@ -13,8 +13,8 @@ from .suggetion_views import (
 )
 
 urlpatterns = [
-    path('suggestions/', SuggestionListView.as_view(), name='suggestion-list'),
-    path('suggestions/', SuggestionCreateView.as_view(), name='suggestion-create'),
+    path('suggestions/list', SuggestionListView.as_view(), name='suggestion-list'),
+    path('suggestions/create', SuggestionCreateView.as_view(), name='suggestion-create'),
     path('suggestions/<uuid:suggestion_id>/', SuggestionDetailView.as_view(), name='suggestion-detail'),
     path('suggestions/<uuid:suggestion_id>/status/', SuggestionStatusUpdateView.as_view(), name='suggestion-status-update'),
     path('suggestions/<uuid:suggestion_id>/', SuggestionDeleteView.as_view(), name='suggestion-delete'),

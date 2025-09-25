@@ -45,6 +45,6 @@ class ResidentDetailsSerializer(serializers.ModelSerializer):
         model = Resident
         fields = [
             'resident_id', 'status', 'has_account',
-            'person','added_by',
-            'created_at', 'updated_at', 'is_deleted', 'deleted_at'
+            'person','village','added_by',
+            'created_at'
         ]

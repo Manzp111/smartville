@@ -475,7 +475,7 @@ class VillageEventViewSet(viewsets.ViewSet):
             return Response({"success": False, "message": "Village not found"}, status=status.HTTP_404_NOT_FOUND)
 
         user = request.user
-        queryset = VolunteeringEvent.objects.filter(village=village)
+        queryset = VolunteeringEvent.objects.filter(village=village,status="APPROVED")
 
 
         # --- Apply filters (status, category, date) ---

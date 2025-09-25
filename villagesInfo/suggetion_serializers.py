@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import Suggestion, Comment, Vote
+from Village.serializers import LocationSerializer
 
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -15,6 +16,7 @@ class SuggestionSerializer(serializers.ModelSerializer):
     author = serializers.SerializerMethodField()
     votes_count = serializers.IntegerField(source="votes.count", read_only=True)
     comments_count = serializers.IntegerField(source="comments.count", read_only=True)
+    village=LocationSerializer(read_only=True)
 
     class Meta:
         model = Suggestion
