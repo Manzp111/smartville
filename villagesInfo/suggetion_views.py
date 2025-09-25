@@ -62,6 +62,8 @@ class SuggestionCreateView(generics.CreateAPIView):
     ],
     tags=["Suggestions"]
 )
+
+
 class SuggestionListView(generics.ListAPIView):
     serializer_class = SuggestionSerializer
     permission_classes = [permissions.IsAuthenticated]
