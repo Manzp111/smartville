@@ -29,12 +29,12 @@ from .utils import generate_otp
 
 
 
-TAG = ["Authentication"]
+
 # -----------------------------
 # Register View
 # -----------------------------
 @extend_schema(
-    tags=TAG,
+    
     request=RegisterSerializer,
     responses={
         201: OpenApiExample(
