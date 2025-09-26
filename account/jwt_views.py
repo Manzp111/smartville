@@ -12,6 +12,8 @@ from .error_responses import errorss__response
 # -----------------------------
 # Custom Token Obtain (Login)
 # -----------------------------
+TAG = ["Authentication"]
+
 @extend_schema(
     request=CustomTokenObtainPairSerializer,
     summary="User Login using phone number with JWT authentication",

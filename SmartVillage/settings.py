@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     "villagesInfo",  
     "VolunteerActivity",
     'team_contact',
+    "contacts",
 ]
 
 # MIDDLEWARE (CorsMiddleware moved near top)

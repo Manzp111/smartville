@@ -8,6 +8,10 @@ from .serializers import ResidentSerializer, EventSerializer, LocationSerializer
 from drf_spectacular.utils import extend_schema, OpenApiExample
 from VolunteerActivity.models import VolunteeringEvent
 
+
+
+TAG = ["Village Info"]
+
 class VillageNewsAPIView(APIView):
 
     @extend_schema(

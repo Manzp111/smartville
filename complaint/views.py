@@ -10,6 +10,9 @@ from .mixins import ComplaintRolePermissionMixin
 from rest_framework.permissions import IsAuthenticated,AllowAny
 from rest_framework.response import Response
 
+
+TAG = ["Complaints"]
+
 class ComplaintViewSet(viewsets.ModelViewSet, ComplaintRolePermissionMixin):
     queryset = Complaint.objects.all().order_by('-date_submitted')
     serializer_class = ComplaintSerializer

@@ -21,6 +21,7 @@ urlpatterns = [
     path("",include("VolunteerActivity.urls")),
     path("",include("team_contact.urls")),
     path('',include("vistor.urls")),
+    path("",include("contacts.urls")),
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     # Optional UI:
     path('api/schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
