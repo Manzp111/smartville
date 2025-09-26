@@ -25,6 +25,7 @@ class EventAdmin(admin.ModelAdmin):
         "title",
         "organizer",
         "date",
+        "image",
         "village",
         "start_time",
         "end_time",
