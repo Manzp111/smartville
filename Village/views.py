@@ -3,6 +3,8 @@ import shapefile
 from shapely.geometry import Point, shape
 #postgresql://:@dpg-d31jvrjuibrs73928oc0-a.oregon-postgres.render.com/
 
+TAG = ["location"]
+
 def locate_point(request):
     result = None
 

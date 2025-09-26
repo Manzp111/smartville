@@ -43,6 +43,9 @@ from .serializers import EventSerializer,VillageEventsResponseSerializer
 from .models import STATUS_CHOICES, CATEGORY_CHOICES
 
 
+TAG = ["Events"]
+
+
 class EventsByVillageAPIView(APIView):
 
     @extend_schema(

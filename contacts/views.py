@@ -7,7 +7,7 @@ from .permissions import IsLeaderOrAdmin
 from drf_spectacular.utils import extend_schema, extend_schema_view
 
 
-TAG = ["Village Contacts"]
+TAG = ["Village "]
 
 @extend_schema(
     summary="List all contacts",

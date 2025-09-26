@@ -11,6 +11,9 @@ from account.models import User
 # -------------------------
 # Role-based Permission
 # -------------------------
+
+TAG = ["Visitor"]
+
 class IsResidentOrLeader:
     """
     Role-based access for Visitor:

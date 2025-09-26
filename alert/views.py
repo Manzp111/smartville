@@ -9,6 +9,9 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.exceptions import MethodNotAllowed
 
 
+TAG = ["Community Alerts"]
+
+
 class CommunityAlertViewSet(AlertRolePermissionMixin, viewsets.ModelViewSet):
     queryset = CommunityAlert.objects.all().order_by("-created_at")
     serializer_class = CommunityAlertSerializer
@@ -18,6 +21,7 @@ class CommunityAlertViewSet(AlertRolePermissionMixin, viewsets.ModelViewSet):
     ordering = ['-created_at']
 
     @extend_schema(
+        tags=TAG,
         summary="Create alert",
         description="Automatically assigns the reporter and village based on the logged-in user.",
         request=CommunityAlertSerializer,

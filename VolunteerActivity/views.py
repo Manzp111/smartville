@@ -9,6 +9,10 @@ from .models import VolunteeringEvent
 from .serializers import VolunteeringEventSerializer, VolunteeringEventCreateSerializer
 from Village.models import Village
 from Resident.models import Resident
+
+
+
+TAG = ["Volunteering Events"]
 # -------------------------
 # Role-based Permission
 # -------------------------
