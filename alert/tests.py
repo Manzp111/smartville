@@ -1,7 +1,7 @@
 from django.urls import reverse
 from rest_framework.test import APITestCase
 from account.models import User, Person
-from Location.models import Location
+from Village.models import Location
 from alert.models import CommunityAlert
 
 class CommunityAlertAPITest(APITestCase):

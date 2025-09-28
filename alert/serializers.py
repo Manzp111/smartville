@@ -34,7 +34,16 @@ class CommunityAlertSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["reporter", "created_at", "updated_at", "status", "village"]
+        read_only_fields = ["reporter", "created_at", "updated_at",  "village"]
+    def get_fields(self):
+        fields = super().get_fields()
+        user = self.context["request"].user
+
+        # Only allow leaders and admins to write status
+        if not user.is_authenticated or user.role not in ["leader", "admin"]:
+            fields["status"].read_only = True
+
+        return fields
 
     def create(self, validated_data):
         user = self.context["request"].user

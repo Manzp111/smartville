@@ -1,118 +1,81 @@
+# accounts/tests/test_auth.py
 from django.urls import reverse
+from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
-from rest_framework.test import APITestCase
-from account.models import User, Person, Village, OTP
-from account.utils import generate_otp
-from datetime import timedelta
-from django.utils import timezone
+from accounts.models import User
 
-class RegisterViewTest(APITestCase):
+class AuthTests(APITestCase):
     def setUp(self):
-        self.url = reverse('register')  # URL from your urls.py
+        self.client = APIClient()
+        self.register_url = reverse("register")
+        self.verify_url = reverse("verify-otp")
+        self.resend_url = reverse("resend-otp")
+        self.login_url = reverse("token_obtain_pair")
+        self.refresh_url = reverse("token_refresh")
+        self.me_url = reverse("user_profile")
 
-    def test_register_user_success(self):
-        data = {
-            "email": "test@example.com",
-            "password": "StrongPass1!",
-            "confirm_password": "StrongPass1!",
+    def test_register_user(self):
+        payload = {
+            "phone_number": "0788000000",
+            "password": "Test1234@",
+            "confirm_password": "Test1234@",
             "person": {
-                "national_id": 1234567890123456,
-                "Village": {
-                    "province": "Kigali",
-                    "district": "Gasabo",
-                    "sector": "Kacyiru",
-                    "cell": "Kimironko",
-                    "village": "Village1"
-                }
-            }
+                "first_name": "John",
+                "last_name": "Doe",
+                "national_id": "1234567890123456",
+                "gender": "male"
+            },
+            "location_id": "f138c017-e26d-418b-85c6-b2978e348e91"
         }
-        response = self.client.post(self.url, data, format='json')
+        response = self.client.post(self.register_url, payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertTrue(User.objects.filter(email="test@example.com").exists())
-        self.assertIn("message", response.data)
+        self.assertTrue(User.objects.filter(phone_number="0788000000").exists())
 
-    def test_register_user_password_mismatch(self):
-        data = {
-            "email": "test2@example.com",
-            "password": "StrongPass1!",
-            "confirm_password": "WrongPass1!",
-            "person": {
-                "national_id": 1234567890123457,
-                "Village": {
-                    "province": "Kigali",
-                    "district": "Gasabo",
-                    "sector": "Kacyiru",
-                    "cell": "Kimironko",
-                    "village": "Village2"
-                }
-            }
-        }
-        response = self.client.post(self.url, data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("Passwords do not match.", str(response.data))
-
-    def test_register_user_existing_email(self):
-        # Pre-create user
-        Village = Village.objects.create(
-            province="Kigali", district="Gasabo", sector="Kacyiru", cell="Kimironko", village="VillageX"
+    def test_login_unverified_user(self):
+        user = User.objects.create_user(
+            phone_number="0788111111",
+            password="Test1234@",
+            is_verified=False
         )
-        person = Person.objects.create(national_id=1234567890123458, Village=Village)
-        User.objects.create_user(email="existing@example.com", password="StrongPass1!", person=person)
-
-        data = {
-            "email": "existing@example.com",
-            "password": "StrongPass1!",
-            "confirm_password": "StrongPass1!",
-            "person": {
-                "national_id": 1234567890123459,
-                "Village": {
-                    "province": "Kigali",
-                    "district": "Gasabo",
-                    "sector": "Kacyiru",
-                    "cell": "Kimironko",
-                    "village": "VillageY"
-                }
-            }
-        }
-        response = self.client.post(self.url, data, format='json')
+        response = self.client.post(self.login_url, {
+            "phone_number": "0788111111",
+            "password": "Test1234@"
+        })
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        # Check the correct field key
-        self.assertIn("Email exist", str(response.data['email']))
+        self.assertIn("error", response.data.get("status", "").lower())
 
-
-class OTPVerifyViewTest(APITestCase):
-    def setUp(self):
-        self.url = reverse('verify-otp')
-        # Create Village, person, and user
-        self.Village = Village.objects.create(
-            province="Kigali", district="Gasabo", sector="Kacyiru", cell="Kimironko", village="Village1"
+    def test_login_verified_user_and_access_profile(self):
+        user = User.objects.create_user(
+            phone_number="0788222222",
+            password="Test1234@",
+            is_verified=True
         )
-        self.person = Person.objects.create(national_id=1234567890123456, Village=self.Village)
-        self.user = User.objects.create_user(email="otpuser@example.com", password="StrongPass1!", person=self.person)
-        self.otp = generate_otp(self.user, purpose="verification")
-
-    def test_verify_otp_success(self):
-        data = {"email": self.user.email, "otp_code": self.otp.code}
-        response = self.client.post(self.url, data, format='json')
+        # Login
+        response = self.client.post(self.login_url, {
+            "phone_number": "0788222222",
+            "password": "Test1234@"
+        })
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.user.refresh_from_db()
-        self.otp.refresh_from_db()
-        self.assertTrue(self.user.is_verified)
-        self.assertTrue(self.otp.is_used)
+        access = response.data["data"]["access"]
 
-    def test_verify_otp_invalid_code(self):
-        # OTP code must be <= 6 characters
-        data = {"email": self.user.email, "otp_code": "000000"}  
-        response = self.client.post(self.url, data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        # Check non_field_errors
-        self.assertIn("Invalid or expired OTP", str(response.data['non_field_errors']))
+        # Authenticated profile
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+        me_response = self.client.get(self.me_url)
+        self.assertEqual(me_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(me_response.data["data"]["phone_number"], "0788222222")
 
-    def test_verify_otp_expired(self):
-        # Expire OTP manually
-        self.otp.created_at = timezone.now() - timedelta(hours=1)
-        self.otp.save()
-        data = {"email": self.user.email, "otp_code": self.otp.code}
-        response = self.client.post(self.url, data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("OTP expired", str(response.data['non_field_errors']))
+    def test_refresh_token(self):
+        user = User.objects.create_user(
+            phone_number="0788333333",
+            password="Test1234@",
+            is_verified=True
+        )
+        login = self.client.post(self.login_url, {
+            "phone_number": "0788333333",
+            "password": "Test1234@"
+        })
+        refresh = login.data["data"]["refresh"]
+
+        response = self.client.post(self.refresh_url, {"refresh": refresh})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("access", response.data["data"])

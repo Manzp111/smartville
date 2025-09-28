@@ -39,12 +39,17 @@ class ResidentDetailSerializer(serializers.ModelSerializer):
 
 class ResidentDetailsSerializer(serializers.ModelSerializer):
     person = PersonSerializer()   
+    user_id = serializers.SerializerMethodField() 
     added_by = UserSerializer()
 
     class Meta:
         model = Resident
         fields = [
+            'user_id',
             'resident_id', 'status', 'has_account',
             'person','village','added_by',
             'created_at'
         ]
+    def get_user_id(self, obj):
+            user = User.objects.filter(person=obj.person).first()
+            return user.user_id if user else None

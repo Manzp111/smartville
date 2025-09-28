@@ -1,75 +1,124 @@
 from django.test import TestCase
-from account.models import User, Person, Village
+from django.utils import timezone
+from datetime import timedelta
+from account.models import User, Person, OTP
 
-class UserModelTest(TestCase):
 
-    def setUp(self):
-        # Create a Village
-        self.Village = Village.objects.create(
-            province="Kigali",
-            district="Gasabo",
-            sector="Kacyiru",
-            cell="Kacyiru",
-            village="Village1"
-        )
-
-        # Create a person
-        self.person = Person.objects.create(
-            national_id=123456789,
+class PersonModelTest(TestCase):
+    def test_soft_delete_and_restore(self):
+        person = Person.objects.create(
             first_name="John",
             last_name="Doe",
-            Village=self.Village,
-            date_of_birth="1990-01-01",
-            gender="male",
-            person_type="resident",
-            phone_number="0781234567"
+            phone_number="0781234567",
+            gender="male"
         )
 
-    def test_create_normal_user_with_person(self):
+        # Initially not deleted
+        self.assertFalse(person.is_deleted)
+
+        # Soft delete
+        person.soft_delete()
+        self.assertTrue(person.is_deleted)
+        self.assertIsNotNone(person.deleted_at)
+
+        # Restore
+        person.restore()
+        self.assertFalse(person.is_deleted)
+        self.assertIsNone(person.deleted_at)
+
+
+class UserManagerTest(TestCase):
+    def test_create_user(self):
         user = User.objects.create_user(
-            email="user@test.com",
+            phone_number="0781234567",
             password="password123",
-            person=self.person,
-            username="johndoe"
+            first_name="Alice",
+            last_name="Smith",
+            gender="female"
         )
-        self.assertEqual(user.email, "user@test.com")
+
+        self.assertEqual(user.phone_number, "250781234567")  # normalized
         self.assertTrue(user.check_password("password123"))
-        self.assertEqual(user.person, self.person)
-        self.assertFalse(user.is_staff)
-        self.assertFalse(user.is_superuser)
+        self.assertEqual(user.person.first_name, "Alice")
 
-    def test_create_normal_user_without_person_should_fail(self):
-        with self.assertRaises(ValueError):
-            User.objects.create_user(
-                email="noperson@test.com",
-                password="password123",
-                username="noperson"
-            )
-
-    def test_create_superuser_without_person(self):
-        superuser = User.objects.create_superuser(
-            email="admin@test.com",
-            password="admin123"
+    def test_create_superuser(self):
+        admin = User.objects.create_superuser(
+            phone_number="0788765432",
+            password="adminpass"
         )
-        self.assertEqual(superuser.email, "admin@test.com")
-        self.assertTrue(superuser.check_password("admin123"))
-        self.assertIsNone(superuser.person)  # Superuser has no person
-        self.assertTrue(superuser.is_staff)
-        self.assertTrue(superuser.is_superuser)
-        self.assertTrue(superuser.is_active)
+        self.assertTrue(admin.is_superuser)
+        self.assertTrue(admin.is_staff)
+        self.assertTrue(admin.is_active)
 
-    def test_str_method_normal_user(self):
+
+class UserModelTest(TestCase):
+    def test_soft_delete_and_restore(self):
         user = User.objects.create_user(
-            email="struser@test.com",
-            password="password123",
-            person=self.person,
-            username="struser"
+            phone_number="0781234567",
+            password="testpass"
         )
-        self.assertEqual(str(user), f"{self.person.first_name}-{self.person.Village.village}_{user.role}")
 
-    def test_str_method_superuser_without_person(self):
-        superuser = User.objects.create_superuser(
-            email="superstr@test.com",
-            password="superpassword"
+        # Soft delete
+        self.assertFalse(user.is_deleted)
+        user.soft_delete()
+        self.assertTrue(user.is_deleted)
+        self.assertIsNotNone(user.deleted_at)
+
+        # Restore
+        user.restore()
+        self.assertFalse(user.is_deleted)
+        self.assertIsNone(user.deleted_at)
+
+    def test_user_person_phone_sync(self):
+        user = User.objects.create_user(
+            phone_number="0781234567",
+            password="syncpass"
         )
-        self.assertEqual(str(superuser), f"{superuser.email}_{superuser.role}")
+
+        # Update user phone
+        user.phone_number = "0780000000"
+        user.save()
+
+        # Person phone must match normalized phone
+        user.refresh_from_db()
+        self.assertEqual(user.person.phone_number, "250780000000")
+
+
+class OTPModelTest(TestCase):
+    def test_otp_validity_and_expiry(self):
+        user = User.objects.create_user(
+            phone_number="0781234567",
+            password="otppass"
+        )
+
+        otp = OTP.objects.create(
+            user=user,
+            code="123456",
+            purpose="verification"
+        )
+
+        self.assertTrue(otp.is_valid())
+        self.assertFalse(otp.is_expired())
+
+        # Simulate expiry
+        otp.created_at = timezone.now() - timedelta(minutes=31)
+        otp.save()
+        self.assertTrue(otp.is_expired())
+        self.assertFalse(otp.is_valid())
+
+    def test_used_otp_is_invalid(self):
+        user = User.objects.create_user(
+            phone_number="0781234567",
+            password="otppass"
+        )
+
+        otp = OTP.objects.create(
+            user=user,
+            code="654321",
+            purpose="reset"
+        )
+
+        otp.is_used = True
+        otp.save()
+
+        self.assertFalse(otp.is_valid())
