@@ -52,6 +52,7 @@ class Vote(models.Model):
 
 
 class Comment(models.Model):
+    comment_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     suggestion = models.ForeignKey(Suggestion, on_delete=models.CASCADE, related_name="comments")
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     text = models.TextField()

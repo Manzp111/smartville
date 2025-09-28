@@ -1,14 +1,16 @@
 from rest_framework import serializers
 from .models import Suggestion, Comment, Vote
 from Village.serializers import LocationSerializer
+from account.serializers import UserListSerializer
 
 
 class CommentSerializer(serializers.ModelSerializer):
-    user_display = serializers.CharField(source="user.username", read_only=True)
+    # user_display = serializers.CharField(source="user.email", read_only=True)
+    user=UserListSerializer(read_only=True)
 
     class Meta:
         model = Comment
-        fields = ["id", "user", "user_display", "text", "created_at"]
+        fields = ["comment_id", "user", "text", "created_at"]
         read_only_fields = ["user", "created_at"]
 
 

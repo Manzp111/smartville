@@ -221,6 +221,9 @@ class VoteRemoveView(APIView):
     },
     tags=["Comments"]
 )
+
+
+
 class CommentCreateView(generics.CreateAPIView):
     serializer_class = CommentSerializer
     permission_classes = [permissions.IsAuthenticated]

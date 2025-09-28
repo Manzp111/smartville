@@ -25,7 +25,7 @@ urlpatterns = [
 
     # Comments
     path('suggestions/<uuid:suggestion_id>/comments/', CommentListView.as_view(), name='comment-list'),
-    path('suggestions/<uuid:suggestion_id>/comments/', CommentCreateView.as_view(), name='comment-create'),
+    path('suggestions/<uuid:suggestion_id>/comments/create/', CommentCreateView.as_view(), name='comment-create'),
 
     path("village/<uuid:village_id>/news/", VillageNewsAPIView.as_view(), name="village-dashboard"),
 
