@@ -126,7 +126,7 @@ class ResidentViewSet(VillageRolePermissionMixin,viewsets.ModelViewSet):
         if user.role == "admin":
             return Resident.objects.filter(is_deleted=False)
         elif user.role == "leader":
-            return Resident.objects.filter(is_deleted=False, location__leader=user)
+            return Resident.objects.filter(is_deleted=False, village__leader=user)
         else:
             return Resident.objects.filter(is_deleted=False, person=user.person)
 

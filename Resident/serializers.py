@@ -26,7 +26,7 @@ class ResidentSerializer(serializers.ModelSerializer):
     added_by = UserSerilaizer(read_only=True)
     added_by_email = serializers.ReadOnlyField(source="added_by.email")
     person_name = serializers.ReadOnlyField(source="person.full_name")
-    location_name = serializers.ReadOnlyField(source="Village.village")
+    # location_name = serializers.ReadOnlyField(source="Village.village")
     # status = serializers.ChoiceField(choices=STATUS_CHOICES, required=False)
 
 
@@ -37,7 +37,7 @@ class ResidentSerializer(serializers.ModelSerializer):
             "person",
             "person_name",
             "village",
-            "location_name",
+            # "location_name",
             "status",
             "has_account",
             "added_by",

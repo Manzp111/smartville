@@ -25,10 +25,10 @@ class VillageRolePermissionMixin:
         if user.role == 'admin':
             return qs
 
-        Village = get_resident_location(user)
+        village = get_resident_location(user)
 
         if user.role == 'leader':
-            return qs.filter(Village=Village) if Village else qs.none()
+            return qs.filter(village=village) if village else qs.none()
 
         if user.role == 'resident':
             return qs.filter(added_by=user)
