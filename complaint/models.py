@@ -12,7 +12,7 @@ class Complaint(models.Model):
     is_anonymous = models.BooleanField(default=False)
     location = models.ForeignKey(Village, on_delete=models.CASCADE, related_name='complaints')
     date_submitted = models.DateTimeField(auto_now_add=True)
-    status = models.CharField(max_length=20, choices=[('pending', 'Pending'), ('resolved', 'Resolved')], default='pending')
+    status = models.CharField(max_length=20, choices=[('pending', 'Pending'), ('resolved', 'Resolved'),('under_review',"Under Review"),('investigatin','Investigating')], default='pending')
 
     
     

@@ -7,7 +7,8 @@ from .permissions import IsLeaderOrAdmin
 from drf_spectacular.utils import extend_schema, extend_schema_view
 
 
-TAG = ["Village  contacts"]
+TAG = ["Village contacts"]
+
 
 @extend_schema(
     summary="List all contacts",
@@ -47,14 +48,13 @@ class ContactCreateView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        resident = request.user.person.residencies.first()
-        #serializer.save(created_by=request.user, village=request.user.village)
-        serializer.save(created_by=request.user, village=resident.village)
+        # Attach the user as `created_by`
+        contact = serializer.save(created_by=request.user)
+
         return Response(
-            {"status": "success", "message": "Contact created successfully", "data": serializer.data},
+            {"status": "success", "message": "Contact created successfully", "data": self.get_serializer(contact).data},
             status=status.HTTP_201_CREATED,
         )
-
 
 
 @extend_schema_view(
@@ -89,6 +89,7 @@ class ContactDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Contact.objects.all()
     serializer_class = ContactSerializer
     permission_classes = [IsLeaderOrAdmin]
+    lookup_field = "contact_id"  # ✅ use UUID instead of pk
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -102,7 +103,7 @@ class ContactDetailView(generics.RetrieveUpdateDestroyAPIView):
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        serializer.save()  # keep existing `created_by`
         return Response(
             {"status": "success", "message": "Contact updated successfully", "data": serializer.data},
             status=status.HTTP_200_OK,
